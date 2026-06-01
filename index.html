@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard Monitoring Koperasi — Limpung</title>
+    <link rel="manifest" href="manifest.json"/>
+    <meta name="theme-color" content="#1a7f4b"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-title" content="Kopena Limpung"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2128;
+            --border: #30363d;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --blue: #388bfd;
+            --blue-dim: #1f3a6e;
+            --green: #3fb950;
+            --green-dim: #1a4a27;
+            --amber: #d29922;
+            --amber-dim: #4a3000;
+            --red: #f85149;
+            --red-dim: #4a1016;
+            --cyan: #39c5cf;
+            --cyan-dim: #0e3843;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 24px;
+            font-size: 14px;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-title h1 {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.3px;
+        }
+        .header-title p {
+            color: var(--muted);
+            font-size: 12.5px;
+            margin-top: 3px;
+            font-family: 'Space Mono', monospace;
+        }
+        .header-badge {
+            background: var(--blue-dim);
+            color: var(--blue);
+            border: 1px solid #2f5199;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* KPI CARDS */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .kpi {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .kpi:hover { border-color: var(--blue); }
+        .kpi::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            height: 3px; width: 100%;
+        }
+        .kpi.k-blue::after { background: var(--blue); }
+        .kpi.k-green::after { background: var(--green); }
+        .kpi.k-cyan::after { background: var(--cyan); }
+        .kpi.k-amber::after { background: var(--amber); }
+        .kpi.k-red::after { background: var(--red); }
+        .kpi-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+        }
+        .kpi-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'Space Mono', monospace;
+            line-height: 1;
+        }
+        .kpi-sub {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        /* FILTER BAR */
+        .filterbar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .filterbar input,
+        .filterbar select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 9px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .filterbar input:focus,
+        .filterbar select:focus { border-color: var(--blue); }
+        .filterbar input { flex: 1; min-width: 200px; }
+        .btn {
+            padding: 9px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-export { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-primary { background: var(--blue); color: #fff; }
+
+        /* CHARTS + RANKING */
+        .two-col {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        @media(max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .panel h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel h3 .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--blue);
+        }
+
+        .ranking-list { list-style: none; }
+        .ranking-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .ranking-list li:last-child { border-bottom: none; }
+        .rank-num {
+            width: 22px; height: 22px;
+            background: var(--blue-dim);
+            color: var(--blue);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+            flex-shrink: 0;
+        }
+        .rank-name { flex: 1; color: var(--text); font-weight: 500; }
+        .rank-val { color: var(--green); font-weight: 700; font-family: 'Space Mono', monospace; font-size: 12px; }
+
+        /* TABLE */
+        .table-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .table-header h3 {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .table-count {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: 'Space Mono', monospace;
+        }
+        .table-scroll { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: var(--surface2);
+            padding: 10px 14px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            white-space: nowrap;
+        }
+        td {
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--surface2); }
+        .mono { font-family: 'Space Mono', monospace; font-size: 12px; }
+
+        .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+        .badge.tetap { background: var(--green-dim); color: var(--green); }
+        .badge.berubah { background: var(--amber-dim); color: var(--amber); }
+        .badge.tanpa { background: #2a2a2a; color: var(--muted); }
+
+        .angsuran-cell {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+        .dot-ang {
+            width: 14px; height: 14px;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .dot-ang.a0 { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+        .dot-ang.a1 { background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber); }
+        .dot-ang.a2 { background: #1e3347; color: #6aadff; border: 1px solid #3a7bc8; }
+        .dot-ang.a3 { background: #1a3630; color: #52d49a; border: 1px solid #2ea070; }
+        .dot-ang.a4 { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+        .dot-ang.aX { background: #222; color: #555; border: 1px solid #333; }
+
+        .btn-wa {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #163a1e;
+            color: #3fb950;
+            border: 1px solid #2ea070;
+            padding: 5px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .btn-wa:hover { background: #1f4a28; }
+        .btn-edit {
+            background: var(--surface2);
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-edit:hover { border-color: var(--blue); color: var(--blue); }
+
+        /* LOG */
+        .log-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        .log-body {
+            max-height: 140px;
+            overflow-y: auto;
+            background: var(--bg);
+            padding: 12px 16px;
+            font-family: 'Space Mono', monospace;
+            font-size: 11.5px;
+            line-height: 1.7;
+        }
+        .log-time { color: var(--muted); margin-right: 6px; }
+        .log-ok { color: var(--green); }
+        .log-err { color: var(--red); }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed; z-index: 9999;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.open { display: flex; }
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            width: 100%;
+            max-width: 460px;
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(16px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-title { font-size: 16px; font-weight: 800; margin-bottom: 20px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            outline: none;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--blue); }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+        .btn-cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+        .btn-save { background: var(--green); color: #000; }
+
+        /* PAGINATION */
+        .pagination { display: flex; gap: 6px; align-items: center; justify-content: center; padding: 14px; flex-wrap: wrap; }
+        .page-btn {
+            min-width: 32px; height: 32px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .page-btn:hover { border-color: var(--blue); color: var(--blue); }
+        .page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+        .page-info { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; padding: 0 8px; }
+
+        /* FILE UPLOAD (tetap ada jika ingin pakai CSV lain) */
+        .upload-bar {
+            background: var(--surface);
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .upload-label { font-size: 12px; color: var(--muted); }
+        .upload-bar input[type=file] { font-size: 12px; color: var(--muted); }
+        .upload-note { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-title">
+        <h1>Dashboard Monitoring Koperasi</h1>
+        <p>KCP Limpung · Data Penagihan Anggota</p>
+    </div>
+    <div class="header-badge" id="dataBadge">337 records loaded</div>
+</div>
+
+<div class="upload-bar">
+    <span class="upload-label">Ganti data CSV:</span>
+    <input type="file" id="csvFile" accept=".csv">
+    <span class="upload-note">Data limpung.csv sudah ter-embed otomatis</span>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi k-blue">
+        <div class="kpi-label">Total Anggota</div>
+        <div class="kpi-value" id="kAnggota">—</div>
+        <div class="kpi-sub">hasil filter aktif</div>
+    </div>
+    <div class="kpi k-green">
+        <div class="kpi-label">Total Outstanding</div>
+        <div class="kpi-value" id="kOutstanding">—</div>
+        <div class="kpi-sub">sum semua anggota terfilter</div>
+    </div>
+    <div class="kpi k-cyan">
+        <div class="kpi-label">Status TETAP</div>
+        <div class="kpi-value" id="kTetap">—</div>
+        <div class="kpi-sub" id="kTetapPct">—</div>
+    </div>
+    <div class="kpi k-amber">
+        <div class="kpi-label">Status BERUBAH</div>
+        <div class="kpi-value" id="kBerubah">—</div>
+        <div class="kpi-sub" id="kBerubahPct">—</div>
+    </div>
+    <div class="kpi k-red">
+        <div class="kpi-label">Total Plafond</div>
+        <div class="kpi-value" id="kPlafond">—</div>
+        <div class="kpi-sub">seluruh plafond disetujui</div>
+    </div>
+</div>
+
+<div class="filterbar">
+    <input id="search" placeholder="🔍  Cari nama anggota atau no rekening...">
+    <select id="fAO"><option value="">Semua AO</option></select>
+    <select id="fProgres">
+        <option value="">Semua Status</option>
+        <option value="TETAP">TETAP</option>
+        <option value="BERUBAH">BERUBAH</option>
+    </select>
+    <select id="fApr">
+        <option value="">Semua Apr</option>
+        <option value="0">Apr = 0</option>
+        <option value="1">Apr = 1</option>
+        <option value="2">Apr = 2</option>
+        <option value="3">Apr = 3</option>
+        <option value="4">Apr = 4</option>
+    </select>
+    <button class="btn btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+</div>
+
+<div class="two-col">
+    <div class="panel">
+        <h3><span class="dot"></span> Outstanding per AO</h3>
+        <div style="position:relative;height:280px">
+            <canvas id="chartAO"></canvas>
+        </div>
+    </div>
+    <div class="panel">
+        <h3><span class="dot" style="background:var(--amber)"></span> 10 Outstanding Terbesar</h3>
+        <ol class="ranking-list" id="ranking"></ol>
+    </div>
+</div>
+
+<div class="table-panel">
+    <div class="table-header">
+        <h3>Data Detail Anggota</h3>
+        <span class="table-count" id="tableCount">—</span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nama Anggota</th>
+                    <th>No Rekening</th>
+                    <th>Plafond</th>
+                    <th>Outstanding</th>
+                    <th>Angsuran <small>(Apr·Mar·Feb·Jan·Des)</small></th>
+                    <th>Status</th>
+                    <th>Jatuh Tempo</th>
+                    <th>AO</th>
+                    <th>Alamat</th>
+                    <th>Ket. Rekening</th>
+                    <th>WA</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<div class="log-panel">
+    <div class="table-header">
+        <h3>System Log</h3>
+    </div>
+    <div class="log-body" id="logBody">
+        <div><span class="log-time">[00:00:00]</span><span class="log-ok">Sistem siap. Data limpung.csv ter-embed dan dimuat otomatis.</span></div>
+    </div>
+</div>
+
+<!-- MODAL EDIT -->
+<div class="modal" id="editModal">
+    <div class="modal-box">
+        <div class="modal-title">✏️ Edit Data Anggota</div>
+        <input type="hidden" id="editIdx">
+        <div class="form-group"><label>Nama Anggota</label><input id="editNama" type="text"></div>
+        <div class="form-group"><label>Outstanding (angka)</label><input id="editOS" type="text"></div>
+        <div class="form-group"><label>Status Progres</label>
+            <select id="editProg">
+                <option value="TETAP">TETAP</option>
+                <option value="BERUBAH">BERUBAH</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Nama AO</label><input id="editAO2" type="text"></div>
+        <div class="form-group"><label>No HP / WhatsApp</label><input id="editHP" type="text" placeholder="Contoh: 08123456789"></div>
+        <div class="form-group"><label>Alamat</label><input id="editAlamat" type="text" placeholder="Contoh: Jl. Merdeka No. 5, Limpung"></div>
+        <div class="form-group"><label>Keterangan No Rekening</label><input id="editKetRek" type="text" placeholder="Contoh: Rekening Tabungan Simpanan"></div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeModal()">Batal</button>
+            <button class="btn btn-save" onclick="saveEdit()">Simpan</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===================== EMBEDDED DATA =====================
+const EMBEDDED_DATA = [{"No":1,"No Rekening":"541052003094","Nama Anggota":"ABDUL AYIS SUTRISNO","Plafond":10000000,"Outstanding":9127999,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"27-01-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":2,"No Rekening":"541052002989","Nama Anggota":"ABDUL MUTHOLIB","Plafond":17000000,"Outstanding":10339185,"Apr":2,"Mar":2.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"20-11-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":3,"No Rekening":"541052003076","Nama Anggota":"AGUS ARJITO","Plafond":4500000,"Outstanding":3138461,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"09-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":4,"No Rekening":"551052001916","Nama Anggota":"AGUS SLAMET","Plafond":2000000,"Outstanding":2000000,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"06-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":5,"No Rekening":"544052000390","Nama Anggota":"AGUS SURYANTO","Plafond":1500000,"Outstanding":1500000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"03-12-2018","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":6,"No Rekening":"541052003047","Nama Anggota":"AGUS WIANTO","Plafond":8000000,"Outstanding":4276921,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"16-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":7,"No Rekening":"541052003110","Nama Anggota":"AHMAD KHAFIDIN","Plafond":5000000,"Outstanding":4789327,"Apr":0,"Mar":0.0,"Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"10-09-2027","Nama AO":"TANPA NAMA"},{"No":8,"No Rekening":"551052001940","Nama Anggota":"AHMAD NASIRIN","Plafond":20000000,"Outstanding":20000000,"Apr":1,"Mar":0.0,"Feb":"","Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"17-09-2026","Nama AO":"TANPA NAMA"},{"No":9,"No Rekening":"541052002731","Nama Anggota":"AHMAD RIZKI","Plafond":20000000,"Outstanding":12737978,"Apr":3,"Mar":3.0,"Feb":3.0,"Jan":3.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"27-02-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":10,"No Rekening":"541052002822","Nama Anggota":"AHMAD SATRIA","Plafond":10000000,"Outstanding":5230850,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"26-07-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":11,"No Rekening":"541052003087","Nama Anggota":"AHMAD SOBIRIN","Plafond":4000000,"Outstanding":3425641,"Apr":1,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"08-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":12,"No Rekening":"551052000381","Nama Anggota":"AHMAD SOBIRIN","Plafond":7000000,"Outstanding":7000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"28-09-2015","Nama AO":"FINA MILATUL AZKA"},{"No":13,"No Rekening":"541052002991","Nama Anggota":"AHMAD TOKHIR","Plafond":7000000,"Outstanding":3873024,"Apr":1,"Mar":2.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"20-11-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":14,"No Rekening":"551052001534","Nama Anggota":"AHMAD WAHIDIN","Plafond":50000000,"Outstanding":35000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"27-07-2023","Nama AO":"FINA MILATUL AZKA"},{"No":15,"No Rekening":"541052003067","Nama Anggota":"AHMAT MUSBIHIN","Plafond":4000000,"Outstanding":2467950,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"06-11-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":16,"No Rekening":"541052002703","Nama Anggota":"AKH. FAOZAN","Plafond":20000000,"Outstanding":17882879,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"19-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":17,"No Rekening":"551052001922","Nama Anggota":"AKHADUN","Plafond":4000000,"Outstanding":4000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"05-08-2026","Nama AO":"TANPA NAMA"},{"No":18,"No Rekening":"541052003122","Nama Anggota":"ALFA KHOIRINA","Plafond":6500000,"Outstanding":6500000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"30-04-2028","Nama AO":"TANPA NAMA"},{"No":19,"No Rekening":"541052002896","Nama Anggota":"ALI MASYKUR","Plafond":10000000,"Outstanding":3973328,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":20,"No Rekening":"543052000012","Nama Anggota":"ALI MURTADLO","Plafond":25000000,"Outstanding":17499994,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"13-11-2023","Nama AO":"FINA MILATUL AZKA"},{"No":21,"No Rekening":"541052003020","Nama Anggota":"AMAD FAUZI","Plafond":3000000,"Outstanding":330682,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-05-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":22,"No Rekening":"541052002959","Nama Anggota":"AMIN","Plafond":45000000,"Outstanding":25740000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"14-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":23,"No Rekening":"541052002963","Nama Anggota":"ANDRY HENDRATNO","Plafond":35000000,"Outstanding":25896587,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"17-03-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":24,"No Rekening":"541052002847","Nama Anggota":"ANI MURDIYANI","Plafond":10000000,"Outstanding":3511661,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"02-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":25,"No Rekening":"551052001767","Nama Anggota":"ANIK ERMAWATI","Plafond":17000000,"Outstanding":17000000,"Apr":3,"Mar":3.0,"Feb":3.0,"Jan":4.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"06-06-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":26,"No Rekening":"541052000544","Nama Anggota":"ANTONO","Plafond":7000000,"Outstanding":5833332,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"21-02-2017","Nama AO":"TANPA NAMA"},{"No":27,"No Rekening":"541052002979","Nama Anggota":"APRILIYANTI","Plafond":25000000,"Outstanding":16333330,"Apr":1,"Mar":2.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"BERUBAH","Tanggal Jatuh Tempo":"17-04-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":28,"No Rekening":"541052003008","Nama Anggota":"ARI ROSIANA","Plafond":5500000,"Outstanding":3593330,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"18-06-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":29,"No Rekening":"541052003089","Nama Anggota":"ARIF MUSTOFA","Plafond":50000000,"Outstanding":48129153,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"15-07-2029","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":30,"No Rekening":"541052002753","Nama Anggota":"ARIF SODIKIN","Plafond":40000000,"Outstanding":36539040,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"28-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":31,"No Rekening":"541052003050","Nama Anggota":"ARIF USMANTO","Plafond":50000000,"Outstanding":43706831,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"22-09-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":32,"No Rekening":"551052001941","Nama Anggota":"ARIPIN","Plafond":10000000,"Outstanding":10000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"10-10-2026","Nama AO":"TANPA NAMA"},{"No":33,"No Rekening":"541052002973","Nama Anggota":"ASHAR MUFIDI","Plafond":4000000,"Outstanding":1282167,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"21-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":34,"No Rekening":"551052001936","Nama Anggota":"ASIAH","Plafond":5000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":"","Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"09-09-2026","Nama AO":"TANPA NAMA"},{"No":35,"No Rekening":"541052003057","Nama Anggota":"ASLAKHUL ARIFIN","Plafond":14000000,"Outstanding":12981410,"Apr":2,"Mar":2.0,"Feb":2.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"08-10-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":36,"No Rekening":"541052002706","Nama Anggota":"ASMAWI","Plafond":40000000,"Outstanding":15938443,"Apr":1,"Mar":1.0,"Feb":2.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"24-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":37,"No Rekening":"541052003088","Nama Anggota":"ASRO","Plafond":15000000,"Outstanding":13692000,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"15-01-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":38,"No Rekening":"551052001914","Nama Anggota":"ASTUTI","Plafond":15000000,"Outstanding":15000000,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"24-06-2026","Nama AO":"FINA MILATUL AZKA"},{"No":39,"No Rekening":"541052003007","Nama Anggota":"BAHRI","Plafond":13000000,"Outstanding":8493330,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"18-06-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":40,"No Rekening":"551052001813","Nama Anggota":"BAMBANG MUNDAYAT","Plafond":10000000,"Outstanding":10000000,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"14-09-2025","Nama AO":"FINA MILATUL AZKA"},{"No":41,"No Rekening":"541052003084","Nama Anggota":"BAMBANG SUGIARTO","Plafond":4000000,"Outstanding":3124616,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"07-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":42,"No Rekening":"541052003085","Nama Anggota":"BAMBANG SUPRIYANTO","Plafond":5000000,"Outstanding":4715334,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"07-01-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":43,"No Rekening":"541052002984","Nama Anggota":"BAMBANG SUSANTO","Plafond":5000000,"Outstanding":1903505,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"29-10-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":44,"No Rekening":"541052002826","Nama Anggota":"BARIYAH","Plafond":30000000,"Outstanding":13275000,"Apr":2,"Mar":2.0,"Feb":2.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"02-08-2026","Nama AO":"FINA MILATUL AZKA"},{"No":45,"No Rekening":"541052002921","Nama Anggota":"BASARI","Plafond":10000000,"Outstanding":5298329,"Apr":1,"Mar":2.0,"Feb":2.0,"Jan":1.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"23-01-2027","Nama AO":"FINA MILATUL AZKA"},{"No":46,"No Rekening":"551052001525","Nama Anggota":"BAWON","Plafond":6000000,"Outstanding":4000000,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"09-07-2023","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":47,"No Rekening":"541052003113","Nama Anggota":"BUNASIR","Plafond":10000000,"Outstanding":9721333,"Apr":0,"Mar":0.0,"Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"16-03-2028","Nama AO":"TANPA NAMA"},{"No":48,"No Rekening":"541052003098","Nama Anggota":"DASMONO","Plafond":7000000,"Outstanding":6601466,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"02-02-2028","Nama AO":"TANPA NAMA"},{"No":49,"No Rekening":"541052003012","Nama Anggota":"DENI SUSANTI","Plafond":40000000,"Outstanding":32402405,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"20-06-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":50,"No Rekening":"541052003077","Nama Anggota":"DEVI DWI ANGGRAENI","Plafond":15000000,"Outstanding":13100000,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"09-12-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":51,"No Rekening":"541052002898","Nama Anggota":"DIAH HUSNA ARIFAH","Plafond":55000000,"Outstanding":33724163,"Apr":2,"Mar":2.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"10-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":52,"No Rekening":"551052001944","Nama Anggota":"DIAN NOVISANTI","Plafond":800000,"Outstanding":800000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"29-05-2026","Nama AO":"TANPA NAMA"},{"No":53,"No Rekening":"541052002955","Nama Anggota":"DIMAS RIZKY PUTRA SULISTIO","Plafond":35000000,"Outstanding":25896587,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"12-03-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":54,"No Rekening":"541052002889","Nama Anggota":"DIMAS WAHYU RANGGA PRADANA","Plafond":25000000,"Outstanding":15922493,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"20-11-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":55,"No Rekening":"541052003048","Nama Anggota":"DJUNED DJANSITA","Plafond":30000000,"Outstanding":26224101,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"17-09-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":56,"No Rekening":"541052002733","Nama Anggota":"EKO HARYANTO","Plafond":40000000,"Outstanding":20923429,"Apr":2,"Mar":2.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"04-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":57,"No Rekening":"551052001731","Nama Anggota":"EKO PRATIKNO","Plafond":15000000,"Outstanding":7000000,"Apr":3,"Mar":3.0,"Feb":3.0,"Jan":4.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"01-04-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":58,"No Rekening":"541052002240","Nama Anggota":"EKO SANTOSO","Plafond":510000000,"Outstanding":510000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"15-12-2023","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":59,"No Rekening":"541052001721","Nama Anggota":"EKO SANTOSO","Plafond":1400000000,"Outstanding":1127777777,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"17-05-2022","Nama AO":"TANPA NAMA"},{"No":60,"No Rekening":"541052002871","Nama Anggota":"EMA LUTFIA KURNIAWATI","Plafond":20000000,"Outstanding":7946672,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"17-10-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":61,"No Rekening":"541052003022","Nama Anggota":"ERI WIDAYATI","Plafond":8000000,"Outstanding":2207689,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"07-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":62,"No Rekening":"541052001384","Nama Anggota":"ERIK YUVENALIS SISWANDI","Plafond":200000000,"Outstanding":200000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"18-05-2021","Nama AO":"TANPA NAMA"},{"No":63,"No Rekening":"541052002907","Nama Anggota":"ERWIN SUGIARNI S.PD","Plafond":80000000,"Outstanding":53093097,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"23-12-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":64,"No Rekening":"541052003107","Nama Anggota":"EVA NOFIANA","Plafond":20000000,"Outstanding":19440240,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"26-02-2029","Nama AO":"TANPA NAMA"},{"No":65,"No Rekening":"541052003093","Nama Anggota":"FAHRUDIN","Plafond":5000000,"Outstanding":3905769,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"26-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":66,"No Rekening":"541052002957","Nama Anggota":"FATKHUL MUBIN","Plafond":55000000,"Outstanding":29140829,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"13-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":67,"No Rekening":"541052003004","Nama Anggota":"FATONAH","Plafond":8000000,"Outstanding":3976612,"Apr":0,"Mar":1.0,"Feb":1.0,"Jan":2.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"13-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":68,"No Rekening":"551052001646","Nama Anggota":"FENI YULISTIANI","Plafond":33000000,"Outstanding":33000000,"Apr":2,"Mar":2.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"29-08-2024","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":69,"No Rekening":"541052003071","Nama Anggota":"FERI DEWI SUSANTI","Plafond":7000000,"Outstanding":4318911,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"14-11-2026","Nama AO":"FINA MILATUL AZKA"},{"No":70,"No Rekening":"544052000736","Nama Anggota":"FIKI RISKIANTO","Plafond":1500000,"Outstanding":1125000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"09-04-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":71,"No Rekening":"541052002980","Nama Anggota":"FINA SAFITRI","Plafond":5000000,"Outstanding":2485376,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"25-10-2026","Nama AO":"FINA MILATUL AZKA"},{"No":72,"No Rekening":"543052000036","Nama Anggota":"FITRIANI","Plafond":20000000,"Outstanding":15685252,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"20-05-2029","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":73,"No Rekening":"541052002976","Nama Anggota":"GALVIN ADI SAPUTRA","Plafond":35000000,"Outstanding":21460837,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"27-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":74,"No Rekening":"541052002701","Nama Anggota":"GATRA IMAM ARIFIYANTO","Plafond":50000000,"Outstanding":19923045,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"17-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":75,"No Rekening":"551052001929","Nama Anggota":"GIYONO","Plafond":3000000,"Outstanding":3000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"18-08-2026","Nama AO":"TANPA NAMA"},{"No":76,"No Rekening":"541052000929","Nama Anggota":"H DULJALIL","Plafond":6000000,"Outstanding":6000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"07-01-2020","Nama AO":"TANPA NAMA"},{"No":77,"No Rekening":"541052003055","Nama Anggota":"HADI SUSILO","Plafond":3000000,"Outstanding":1585227,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"25-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":78,"No Rekening":"111052000007","Nama Anggota":"HADI SUSILO","Plafond":200000000,"Outstanding":431358285,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"25-10-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":79,"No Rekening":"541052003104","Nama Anggota":"HARMANTO","Plafond":60000000,"Outstanding":55634615,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"13-02-2027","Nama AO":"TANPA NAMA"},{"No":80,"No Rekening":"541052002998","Nama Anggota":"HARTATIK","Plafond":50000000,"Outstanding":32666670,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"03-06-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":81,"No Rekening":"551052001909","Nama Anggota":"HARTININGSIH","Plafond":35000000,"Outstanding":12000000,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"10-06-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":82,"No Rekening":"541052001307","Nama Anggota":"HARYONO DRS","Plafond":50000000,"Outstanding":37499999,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"07-03-2021","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":83,"No Rekening":"541052003106","Nama Anggota":"HENI APRILIA ROHMAWATI","Plafond":25000000,"Outstanding":23576666,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"23-02-2028","Nama AO":"TANPA NAMA"},{"No":84,"No Rekening":"541052002986","Nama Anggota":"HERI SEPTIAWAN","Plafond":30000000,"Outstanding":23620499,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"09-05-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":85,"No Rekening":"541052003066","Nama Anggota":"HERWIDIYANTI","Plafond":1000000,"Outstanding":427273,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"28-08-2026","Nama AO":"FINA MILATUL AZKA"},{"No":86,"No Rekening":"551052001943","Nama Anggota":"IIS ERNAWATI","Plafond":3000000,"Outstanding":3000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"24-10-2026","Nama AO":"TANPA NAMA"},{"No":87,"No Rekening":"541052002997","Nama Anggota":"IMAM SYARONI","Plafond":5000000,"Outstanding":2485376,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"02-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":88,"No Rekening":"541052003101","Nama Anggota":"INDAH ROZATI","Plafond":3000000,"Outstanding":2569231,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":2.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"04-02-2027","Nama AO":"TANPA NAMA"},{"No":89,"No Rekening":"541052002990","Nama Anggota":"INDRAYANI","Plafond":4000000,"Outstanding":375645,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"20-05-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":90,"No Rekening":"541052000239","Nama Anggota":"IRWANTO","Plafond":8000000,"Outstanding":7333334,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"10-01-2016","Nama AO":"TANPA NAMA"},{"No":91,"No Rekening":"541052000210","Nama Anggota":"ISLAHUL KHIKAM","Plafond":5000000,"Outstanding":4166666,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"20-11-2014","Nama AO":"FINA MILATUL AZKA"},{"No":92,"No Rekening":"541052002936","Nama Anggota":"ISTIKHOMAH","Plafond":20000000,"Outstanding":13850003,"Apr":2,"Mar":2.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"13-02-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":93,"No Rekening":"541052002776","Nama Anggota":"ISTIKOWATI","Plafond":50000000,"Outstanding":23106229,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"24-05-2027","Nama AO":"FINA MILATUL AZKA"},{"No":94,"No Rekening":"551052001836","Nama Anggota":"JAWAN","Plafond":11000000,"Outstanding":11000000,"Apr":0,"Mar":1.0,"Feb":2.0,"Jan":1.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"15-11-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":95,"No Rekening":"541052002897","Nama Anggota":"JIHAN MAULANA YUSUF","Plafond":7000000,"Outstanding":4573330,"Apr":2,"Mar":2.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":96,"No Rekening":"541052002455","Nama Anggota":"JUMAHAR","Plafond":226000000,"Outstanding":59000000,"Apr":4,"Mar":4.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"16-11-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":97,"No Rekening":"541052002245","Nama Anggota":"JUMIATI","Plafond":500000000,"Outstanding":500000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"22-12-2022","Nama AO":"FINA MILATUL AZKA"},{"No":98,"No Rekening":"541052002757","Nama Anggota":"JURIYAH","Plafond":70000000,"Outstanding":22590909,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"05-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":99,"No Rekening":"541052000889","Nama Anggota":"KADARI","Plafond":3600000,"Outstanding":3300000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"28-11-2017","Nama AO":"TANPA NAMA"},{"No":100,"No Rekening":"541052002797","Nama Anggota":"KARNO","Plafond":14000000,"Outstanding":8008004,"Apr":3,"Mar":3.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"25-06-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":101,"No Rekening":"551052001800","Nama Anggota":"KARSIYAH","Plafond":30000000,"Outstanding":30000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"21-08-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":102,"No Rekening":"543052000041","Nama Anggota":"KARYONO","Plafond":9000000,"Outstanding":8707800,"Apr":4,"Mar":4.0,"Feb":3.0,"Jan":3.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"23-12-2026","Nama AO":"FINA MILATUL AZKA"},{"No":103,"No Rekening":"541052003117","Nama Anggota":"KHAERON","Plafond":5000000,"Outstanding":5000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"14-04-2027","Nama AO":"TANPA NAMA"},{"No":104,"No Rekening":"551052001734","Nama Anggota":"KHAERUDIN","Plafond":40000000,"Outstanding":40000000,"Apr":1,"Mar":1.0,"Feb":2.0,"Jan":3.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"07-04-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":105,"No Rekening":"551052001089","Nama Anggota":"KHAIRUDIN","Plafond":10000000,"Outstanding":10000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":3.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"09-04-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":106,"No Rekening":"541052000201","Nama Anggota":"KHOIRUDIN","Plafond":10000000,"Outstanding":8333334,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":1.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"04-11-2014","Nama AO":"FINA MILATUL AZKA"},{"No":107,"No Rekening":"111052000017","Nama Anggota":"KHOIRUL KIROM","Plafond":700000000,"Outstanding":1470049513,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"21-03-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":108,"No Rekening":"551052001930","Nama Anggota":"KHOLIPAH","Plafond":5000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"27-08-2026","Nama AO":"TANPA NAMA"},{"No":109,"No Rekening":"551052000142","Nama Anggota":"KHOMSATUN","Plafond":6000000,"Outstanding":6000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"28-02-2014","Nama AO":"FINA MILATUL AZKA"},{"No":110,"No Rekening":"541052002912","Nama Anggota":"KHONITI","Plafond":20000000,"Outstanding":8850005,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"02-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":111,"No Rekening":"541052003123","Nama Anggota":"KHUMAEDI","Plafond":5000000,"Outstanding":5000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"30-04-2027","Nama AO":"TANPA NAMA"},{"No":112,"No Rekening":"541052003068","Nama Anggota":"KHUMAIYAH","Plafond":1000000,"Outstanding":528409,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"10-09-2026","Nama AO":"FINA MILATUL AZKA"},{"No":113,"No Rekening":"541052002952","Nama Anggota":"KHUSAENI","Plafond":5000000,"Outstanding":2649171,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"07-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":114,"No Rekening":"541052002585","Nama Anggota":"KOMARIYAH","Plafond":12000000,"Outstanding":2333343,"Apr":2,"Mar":2.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"18-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":115,"No Rekening":"543052000037","Nama Anggota":"KOMARUDIN","Plafond":20000000,"Outstanding":15685252,"Apr":1,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"20-05-2029","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":116,"No Rekening":"551052000823","Nama Anggota":"KUS RAHAYU","Plafond":6000000,"Outstanding":6000000,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"06-05-2019","Nama AO":"FINA MILATUL AZKA"},{"No":117,"No Rekening":"541052003082","Nama Anggota":"KUSIYAH","Plafond":30000000,"Outstanding":26200000,"Apr":0,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"24-12-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":118,"No Rekening":"541052002915","Nama Anggota":"KUSRINTO","Plafond":11000000,"Outstanding":5828171,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"08-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":119,"No Rekening":"541052003002","Nama Anggota":"KUSTIANI","Plafond":7000000,"Outstanding":4847497,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"12-06-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":120,"No Rekening":"541052002954","Nama Anggota":"KUSTINI","Plafond":22500000,"Outstanding":16647804,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"11-03-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":121,"No Rekening":"541052002779","Nama Anggota":"KUSTIYAH","Plafond":35000000,"Outstanding":33859610,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"30-05-2027","Nama AO":"TANPA NAMA"},{"No":122,"No Rekening":"541052002630","Nama Anggota":"KUWATI","Plafond":10000000,"Outstanding":1666660,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"05-04-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":123,"No Rekening":"541052002707","Nama Anggota":"LAILATUN NAFIAH","Plafond":70000000,"Outstanding":59741746,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"24-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":124,"No Rekening":"541052003118","Nama Anggota":"LEZA MAULIDINA SALMA","Plafond":5000000,"Outstanding":5000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"15-04-2027","Nama AO":"TANPA NAMA"},{"No":125,"No Rekening":"541052003049","Nama Anggota":"LILIK SUSANTO","Plafond":1500000,"Outstanding":675481,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"22-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":126,"No Rekening":"544052000324","Nama Anggota":"LUFNI HIDAYAT","Plafond":1500000,"Outstanding":750000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"11-09-2018","Nama AO":"FINA MILATUL AZKA"},{"No":127,"No Rekening":"111052000019","Nama Anggota":"LUKMAN HAKIM","Plafond":1000000000,"Outstanding":1942764224,"Apr":0,"Mar":0.0,"Feb":3.0,"Jan":3.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"26-06-2020","Nama AO":"FINA MILATUL AZKA"},{"No":128,"No Rekening":"541052001549","Nama Anggota":"LUSIANA","Plafond":5000000,"Outstanding":5000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"07-05-2020","Nama AO":"FINA MILATUL AZKA"},{"No":129,"No Rekening":"541052002969","Nama Anggota":"LUTFIATUL KHANIFA","Plafond":15000000,"Outstanding":9122809,"Apr":2,"Mar":2.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"19-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":130,"No Rekening":"541052002884","Nama Anggota":"M. AINUL FIRDAUS","Plafond":5500000,"Outstanding":726893,"Apr":1,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"15-05-2026","Nama AO":"FINA MILATUL AZKA"},{"No":131,"No Rekening":"541052000455","Nama Anggota":"MAHFUDIN","Plafond":8000000,"Outstanding":7000001,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"23-02-2017","Nama AO":"TANPA NAMA"},{"No":132,"No Rekening":"541052001345","Nama Anggota":"MAHYUN","Plafond":40000000,"Outstanding":32222223,"Apr":4,"Mar":4.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"10-04-2021","Nama AO":"TANPA NAMA"},{"No":133,"No Rekening":"551052001783","Nama Anggota":"MAIMANAH","Plafond":10000000,"Outstanding":10000000,"Apr":2,"Mar":2.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"20-07-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":134,"No Rekening":"551052001216","Nama Anggota":"MALIKHAH","Plafond":40000000,"Outstanding":40000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"19-06-2023","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":135,"No Rekening":"541052002587","Nama Anggota":"MARUTI","Plafond":40000000,"Outstanding":12222225,"Apr":3,"Mar":3.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"26-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":136,"No Rekening":"541052000927","Nama Anggota":"MARWAN","Plafond":90000000,"Outstanding":77500000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"07-01-2020","Nama AO":"TANPA NAMA"},{"No":137,"No Rekening":"541052002961","Nama Anggota":"MEI DWI ARIS SETIA","Plafond":6000000,"Outstanding":1923250,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"14-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":138,"No Rekening":"541052002716","Nama Anggota":"MEY KURNIAWATI","Plafond":30000000,"Outstanding":21920000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"02-02-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":139,"No Rekening":"541052002631","Nama Anggota":"MIATI","Plafond":20000000,"Outstanding":3888876,"Apr":1,"Mar":2.0,"Feb":2.0,"Jan":1.0,"Des":"2","Progres":"BERUBAH","Tanggal Jatuh Tempo":"06-10-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":140,"No Rekening":"541052003095","Nama Anggota":"MISBAHUL MUNIR","Plafond":5000000,"Outstanding":3905769,"Apr":0,"Mar":0.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"28-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":141,"No Rekening":"541052003064","Nama Anggota":"MISRO","Plafond":25000000,"Outstanding":20099998,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"24-10-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":142,"No Rekening":"541052003074","Nama Anggota":"MISTIATI","Plafond":5000000,"Outstanding":3879807,"Apr":1,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"03-12-2026","Nama AO":"FINA MILATUL AZKA"},{"No":143,"No Rekening":"541052003103","Nama Anggota":"MISTIYAH","Plafond":10000000,"Outstanding":9430666,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"12-02-2028","Nama AO":"TANPA NAMA"},{"No":144,"No Rekening":"551052001821","Nama Anggota":"MISWANTO","Plafond":5000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"26-09-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":145,"No Rekening":"551052000965","Nama Anggota":"MOFAN","Plafond":15000000,"Outstanding":15000000,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"25-12-2019","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":146,"No Rekening":"541052002477","Nama Anggota":"MOHAMMAD FENGKI HUSAIN","Plafond":15000000,"Outstanding":10625000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"13-12-2024","Nama AO":"FINA MILATUL AZKA"},{"No":147,"No Rekening":"551052001901","Nama Anggota":"MUALIMIN","Plafond":5000000,"Outstanding":5000000,"Apr":0,"Mar":1.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"13-05-2026","Nama AO":"FINA MILATUL AZKA"},{"No":148,"No Rekening":"541052002945","Nama Anggota":"MUCHDORI","Plafond":15000000,"Outstanding":7300000,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"21-02-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":149,"No Rekening":"551052001923","Nama Anggota":"MUFATEHATI","Plafond":28000000,"Outstanding":28000000,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"05-08-2026","Nama AO":"TANPA NAMA"},{"No":150,"No Rekening":"541052002920","Nama Anggota":"MUHAMAD FAKHRUROZI","Plafond":15000000,"Outstanding":8860886,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"22-07-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":151,"No Rekening":"541052002751","Nama Anggota":"MUHAMMAD NAJIB NASRULLAH","Plafond":40000000,"Outstanding":26546552,"Apr":3,"Mar":3.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"28-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":152,"No Rekening":"543052000038","Nama Anggota":"MUHAMMAD ROZIKIN","Plafond":25000000,"Outstanding":19606551,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"05-07-2029","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":153,"No Rekening":"541052003086","Nama Anggota":"MUHAMMAD YASIR MAFTUKH","Plafond":4000000,"Outstanding":3124616,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"08-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":154,"No Rekening":"541052002524","Nama Anggota":"MUHLASIN","Plafond":30000000,"Outstanding":16666672,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"09-03-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":155,"No Rekening":"551052001890","Nama Anggota":"MUHLISIN","Plafond":4000000,"Outstanding":2000000,"Apr":1,"Mar":1.0,"Feb":3.0,"Jan":3.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"09-04-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":156,"No Rekening":"551052001817","Nama Anggota":"MUHSININ","Plafond":7000000,"Outstanding":7000000,"Apr":0,"Mar":2.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"21-09-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":157,"No Rekening":"541052002680","Nama Anggota":"MUJIATI","Plafond":20000000,"Outstanding":17069064,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"08-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":158,"No Rekening":"541052002754","Nama Anggota":"MUKHAYATI","Plafond":50000000,"Outstanding":33183181,"Apr":3,"Mar":3.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"03-04-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":159,"No Rekening":"111052000016","Nama Anggota":"MUKHOFIFAH","Plafond":860000000,"Outstanding":200075945,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"26-02-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":160,"No Rekening":"541052002983","Nama Anggota":"MUKHSININ","Plafond":5000000,"Outstanding":3065837,"Apr":1,"Mar":1.0,"Feb":2.0,"Jan":2.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"29-04-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":161,"No Rekening":"541052002748","Nama Anggota":"MUKHSININ","Plafond":30000000,"Outstanding":12918927,"Apr":1,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"26-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":162,"No Rekening":"541052003000","Nama Anggota":"MUKMIN","Plafond":10000000,"Outstanding":6924997,"Apr":1,"Mar":1.0,"Feb":3.0,"Jan":3.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"11-06-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":163,"No Rekening":"541052003102","Nama Anggota":"MULYONO","Plafond":5000000,"Outstanding":4715334,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"11-02-2028","Nama AO":"TANPA NAMA"},{"No":164,"No Rekening":"551052001549","Nama Anggota":"MUSLIKHAH","Plafond":25000000,"Outstanding":9000000,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"10-09-2023","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":165,"No Rekening":"541052002939","Nama Anggota":"MUSROKHAH","Plafond":10000000,"Outstanding":4866662,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"17-02-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":166,"No Rekening":"541052002911","Nama Anggota":"MUSTOFIYAH","Plafond":40000000,"Outstanding":26546552,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"24-12-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":167,"No Rekening":"541052003037","Nama Anggota":"MUZDALIFAH","Plafond":25000000,"Outstanding":20789653,"Apr":1,"Mar":1.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"22-02-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":168,"No Rekening":"551052001768","Nama Anggota":"NARDI","Plafond":100000000,"Outstanding":51250000,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"10-06-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":169,"No Rekening":"551052000525","Nama Anggota":"NASIRUN","Plafond":150000000,"Outstanding":150000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"26-06-2016","Nama AO":"FINA MILATUL AZKA"},{"No":170,"No Rekening":"551052001044","Nama Anggota":"NASOHA","Plafond":8500000,"Outstanding":8500000,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"15-05-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":171,"No Rekening":"551052001857","Nama Anggota":"NIKEN INDHIHASTUTI","Plafond":3500000,"Outstanding":3500000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"25-12-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":172,"No Rekening":"541052002769","Nama Anggota":"NIKMATUL AINIYAH","Plafond":15000000,"Outstanding":6931862,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"16-05-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":173,"No Rekening":"541052002988","Nama Anggota":"NIRAWATI","Plafond":5000000,"Outstanding":2766443,"Apr":1,"Mar":2.0,"Feb":0.0,"Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"19-11-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":174,"No Rekening":"541052003013","Nama Anggota":"NOVA HERU PRASETYA","Plafond":6000000,"Outstanding":2982460,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"23-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":175,"No Rekening":"551052001524","Nama Anggota":"NUR AINIYAH","Plafond":6000000,"Outstanding":6000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"09-07-2023","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":176,"No Rekening":"541052002434","Nama Anggota":"NUR HIDAYAH","Plafond":25000000,"Outstanding":10416676,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"06-10-2025","Nama AO":"FINA MILATUL AZKA"},{"No":177,"No Rekening":"541052002024","Nama Anggota":"NUR HIDAYATI","Plafond":150000000,"Outstanding":129166665,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"02-09-2023","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":178,"No Rekening":"541052003114","Nama Anggota":"NUR KHAFIDZIN","Plafond":5000000,"Outstanding":4646795,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"17-03-2027","Nama AO":"TANPA NAMA"},{"No":179,"No Rekening":"541052003031","Nama Anggota":"NUR KHALIMIN","Plafond":7000000,"Outstanding":5114664,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"13-08-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":180,"No Rekening":"541052003092","Nama Anggota":"NUR KHAYATI","Plafond":3500000,"Outstanding":3199533,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"21-07-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":181,"No Rekening":"541052001562","Nama Anggota":"NUR KHOYIN","Plafond":5000000,"Outstanding":4722222,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"30-05-2020","Nama AO":"FINA MILATUL AZKA"},{"No":182,"No Rekening":"541052002868","Nama Anggota":"NUR ROFIK","Plafond":15000000,"Outstanding":12060000,"Apr":3,"Mar":3.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"11-10-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":183,"No Rekening":"541052002228","Nama Anggota":"NURHAYATI","Plafond":70000000,"Outstanding":68055556,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"04-11-2024","Nama AO":"FINA MILATUL AZKA"},{"No":184,"No Rekening":"541052002773","Nama Anggota":"NURKHOYIN","Plafond":30000000,"Outstanding":26824326,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"17-05-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":185,"No Rekening":"541052002835","Nama Anggota":"NUROKHMAH","Plafond":30000000,"Outstanding":16576583,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"12-08-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":186,"No Rekening":"541052003034","Nama Anggota":"NURYANTI","Plafond":15000000,"Outstanding":10960000,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"21-08-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":187,"No Rekening":"551052001911","Nama Anggota":"NURYANTO","Plafond":7000000,"Outstanding":6000000,"Apr":0,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"15-06-2026","Nama AO":"FINA MILATUL AZKA"},{"No":188,"No Rekening":"541052002994","Nama Anggota":"OKI SEPTIANI","Plafond":10000000,"Outstanding":6131663,"Apr":0,"Mar":1.0,"Feb":3.0,"Jan":3.0,"Des":"3","Progres":"BERUBAH","Tanggal Jatuh Tempo":"23-05-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":189,"No Rekening":"541052002243","Nama Anggota":"PARIKHIN","Plafond":70000000,"Outstanding":58333336,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"20-12-2024","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":190,"No Rekening":"541052003120","Nama Anggota":"PARSIKIN","Plafond":50000000,"Outstanding":50000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"28-04-2028","Nama AO":"TANPA NAMA"},{"No":191,"No Rekening":"541052003099","Nama Anggota":"PARYATI","Plafond":5000000,"Outstanding":4570760,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"03-08-2027","Nama AO":"TANPA NAMA"},{"No":192,"No Rekening":"541052002002","Nama Anggota":"PATAH","Plafond":11000000,"Outstanding":11000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"22-07-2022","Nama AO":"FINA MILATUL AZKA"},{"No":193,"No Rekening":"541052003083","Nama Anggota":"PAWITRI","Plafond":28000000,"Outstanding":26282666,"Apr":1,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"29-12-2027","Nama AO":"FINA MILATUL AZKA"},{"No":194,"No Rekening":"541052003042","Nama Anggota":"PUJI PURWANTI","Plafond":15000000,"Outstanding":9926537,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"02-03-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":195,"No Rekening":"541052003090","Nama Anggota":"PUJIONO","Plafond":5000000,"Outstanding":4564001,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"19-01-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":196,"No Rekening":"551052001895","Nama Anggota":"PURWANTO","Plafond":8000000,"Outstanding":6000000,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"20-04-2026","Nama AO":"FINA MILATUL AZKA"},{"No":197,"No Rekening":"541052002923","Nama Anggota":"RAHARJO","Plafond":7000000,"Outstanding":3097495,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":2.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"24-01-2027","Nama AO":"FINA MILATUL AZKA"},{"No":198,"No Rekening":"541052001689","Nama Anggota":"RAHMAD EFENDI","Plafond":6000000,"Outstanding":5000000,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"11-04-2020","Nama AO":"FINA MILATUL AZKA"},{"No":199,"No Rekening":"551052001938","Nama Anggota":"RANI WIJAYANTI","Plafond":15000000,"Outstanding":15000000,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"09-09-2026","Nama AO":"TANPA NAMA"},{"No":200,"No Rekening":"541052003100","Nama Anggota":"RENI KURNIA HATI","Plafond":2000000,"Outstanding":1712820,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-02-2027","Nama AO":"TANPA NAMA"},{"No":201,"No Rekening":"541052003021","Nama Anggota":"RENI WIDIASTUTI","Plafond":13000000,"Outstanding":9002497,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-07-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":202,"No Rekening":"541052002972","Nama Anggota":"REPIN","Plafond":4000000,"Outstanding":2467950,"Apr":3,"Mar":3.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"20-03-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":203,"No Rekening":"541052002926","Nama Anggota":"REZA SAPUTRA ADI","Plafond":8000000,"Outstanding":4576004,"Apr":2,"Mar":1.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"30-01-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":204,"No Rekening":"541052002825","Nama Anggota":"RIAN ADE PRATAMA","Plafond":30000000,"Outstanding":15895000,"Apr":3,"Mar":2.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"01-08-2026","Nama AO":"FINA MILATUL AZKA"},{"No":205,"No Rekening":"541052002831","Nama Anggota":"RIDWAN","Plafond":20000000,"Outstanding":11051040,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"08-08-2027","Nama AO":"FINA MILATUL AZKA"},{"No":206,"No Rekening":"551052001806","Nama Anggota":"RISA NUR RANI","Plafond":12000000,"Outstanding":12000000,"Apr":3,"Mar":3.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"06-09-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":207,"No Rekening":"541052002943","Nama Anggota":"RISDIYANTO","Plafond":15000000,"Outstanding":10727473,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"19-02-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":208,"No Rekening":"541052002916","Nama Anggota":"RISWANTO","Plafond":50000000,"Outstanding":34487611,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"10-01-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":209,"No Rekening":"541052002890","Nama Anggota":"RIYA PURNAMASARI","Plafond":50000000,"Outstanding":39013601,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"22-11-2028","Nama AO":"FINA MILATUL AZKA"},{"No":210,"No Rekening":"541052002494","Nama Anggota":"RIYADEN","Plafond":5000000,"Outstanding":4444444,"Apr":4,"Mar":4.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"16-07-2024","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":211,"No Rekening":"541052002809","Nama Anggota":"RIYADI","Plafond":10000000,"Outstanding":1564993,"Apr":0,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"11-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":212,"No Rekening":"541052002992","Nama Anggota":"RIYANI INDAH HIDAYATI","Plafond":10000000,"Outstanding":6131663,"Apr":0,"Mar":0.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"20-05-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":213,"No Rekening":"551052001903","Nama Anggota":"ROHANI","Plafond":12000000,"Outstanding":12000000,"Apr":1,"Mar":0.0,"Feb":3.0,"Jan":4.0,"Des":"2","Progres":"BERUBAH","Tanggal Jatuh Tempo":"17-05-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":214,"No Rekening":"541052003073","Nama Anggota":"ROHMAT","Plafond":14000000,"Outstanding":11748335,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"27-11-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":215,"No Rekening":"551052001934","Nama Anggota":"ROKHADI","Plafond":7000000,"Outstanding":7000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"03-09-2026","Nama AO":"TANPA NAMA"},{"No":216,"No Rekening":"541052003097","Nama Anggota":"ROKHIM SLAMET","Plafond":35000000,"Outstanding":32453525,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"02-02-2027","Nama AO":"TANPA NAMA"},{"No":217,"No Rekening":"541052002971","Nama Anggota":"RONDI","Plafond":15000000,"Outstanding":10461539,"Apr":3,"Mar":3.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"20-03-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":218,"No Rekening":"551052001809","Nama Anggota":"RONI FASLAH","Plafond":50000000,"Outstanding":30000000,"Apr":1,"Mar":2.0,"Feb":0.0,"Jan":1.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"11-09-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":219,"No Rekening":"541052003040","Nama Anggota":"ROSIDIN","Plafond":2000000,"Outstanding":728203,"Apr":0,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"28-08-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":220,"No Rekening":"544052000706","Nama Anggota":"RUNI","Plafond":1500000,"Outstanding":1125000,"Apr":4,"Mar":4.0,"Feb":3.0,"Jan":3.0,"Des":"3","Progres":"TETAP","Tanggal Jatuh Tempo":"29-02-2020","Nama AO":"FINA MILATUL AZKA"},{"No":221,"No Rekening":"541052001691","Nama Anggota":"RUSIDAH","Plafond":40000000,"Outstanding":32222223,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":3.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"12-04-2022","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":222,"No Rekening":"541052003023","Nama Anggota":"RUSNANDAR","Plafond":6000000,"Outstanding":4155000,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"07-07-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":223,"No Rekening":"541052002789","Nama Anggota":"RUSNO","Plafond":18000000,"Outstanding":8872974,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"13-06-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":224,"No Rekening":"541052003080","Nama Anggota":"RUSTIANAH","Plafond":12000000,"Outstanding":8369230,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"19-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":225,"No Rekening":"551052000635","Nama Anggota":"SABARI","Plafond":7000000,"Outstanding":7000000,"Apr":4,"Mar":4.0,"Feb":3.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"24-11-2017","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":226,"No Rekening":"541052002796","Nama Anggota":"SAIT","Plafond":20000000,"Outstanding":11051040,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":2.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"24-06-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":227,"No Rekening":"541052003072","Nama Anggota":"SAMARI","Plafond":7000000,"Outstanding":6040569,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"26-05-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":228,"No Rekening":"541052001104","Nama Anggota":"SAPTOWATI","Plafond":7500000,"Outstanding":3333330,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"12-02-2019","Nama AO":"FINA MILATUL AZKA"},{"No":229,"No Rekening":"541052002894","Nama Anggota":"SARMIDI","Plafond":7000000,"Outstanding":3097495,"Apr":1,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"03-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":230,"No Rekening":"541052000621","Nama Anggota":"SAYOMAH","Plafond":8000000,"Outstanding":5333332,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"15-10-2016","Nama AO":"TANPA NAMA"},{"No":231,"No Rekening":"541052003115","Nama Anggota":"SEPTI MULYANI","Plafond":12000000,"Outstanding":12000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"09-04-2028","Nama AO":"TANPA NAMA"},{"No":232,"No Rekening":"541052001990","Nama Anggota":"SETIARSO A.MA","Plafond":210000000,"Outstanding":186666668,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-07-2023","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":233,"No Rekening":"541052002944","Nama Anggota":"SIGIT SULISTYAWAN","Plafond":6000000,"Outstanding":2920000,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"20-02-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":234,"No Rekening":"551052001904","Nama Anggota":"SITI CHUSNA MURHANJATI SYUHADA","Plafond":10000000,"Outstanding":10000000,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"27-05-2026","Nama AO":"FINA MILATUL AZKA"},{"No":235,"No Rekening":"551052000135","Nama Anggota":"SITI MISRINA","Plafond":5000000,"Outstanding":2000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"20-02-2014","Nama AO":"FINA MILATUL AZKA"},{"No":236,"No Rekening":"551052001920","Nama Anggota":"SITI MUASAROH","Plafond":10000000,"Outstanding":10000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"27-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":237,"No Rekening":"541052002876","Nama Anggota":"SITI NURJANAH S.PD.I","Plafond":20000000,"Outstanding":10659089,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"25-06-2027","Nama AO":"FINA MILATUL AZKA"},{"No":238,"No Rekening":"541052003033","Nama Anggota":"SITI PURWANTI","Plafond":16000000,"Outstanding":11690664,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"16-08-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":239,"No Rekening":"541052001586","Nama Anggota":"SITI RIWAYATI HJ","Plafond":975000000,"Outstanding":758333336,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"04-01-2022","Nama AO":"TANPA NAMA"},{"No":240,"No Rekening":"541052002886","Nama Anggota":"SITI RODHIYAH","Plafond":40000000,"Outstanding":33283786,"Apr":3,"Mar":3.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"19-11-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":241,"No Rekening":"541052002531","Nama Anggota":"SITI ROMLAH","Plafond":50000000,"Outstanding":26388887,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"15-03-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":242,"No Rekening":"541052002578","Nama Anggota":"SITI SOKHIKHAH","Plafond":40000000,"Outstanding":2222226,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"28-06-2026","Nama AO":"FINA MILATUL AZKA"},{"No":243,"No Rekening":"543052000013","Nama Anggota":"SITI YUMAROH","Plafond":25000000,"Outstanding":18333328,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"13-11-2023","Nama AO":"FINA MILATUL AZKA"},{"No":244,"No Rekening":"551052001756","Nama Anggota":"SLAMET","Plafond":100000000,"Outstanding":100000000,"Apr":3,"Mar":2.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"20-05-2025","Nama AO":"FINA MILATUL AZKA"},{"No":245,"No Rekening":"551052001180","Nama Anggota":"SLAMET RIYANTO","Plafond":400000000,"Outstanding":400000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"30-11-2022","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":246,"No Rekening":"551052001905","Nama Anggota":"SLAMET TOYIBAH","Plafond":2000000,"Outstanding":2000000,"Apr":1,"Mar":0.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"BERUBAH","Tanggal Jatuh Tempo":"27-05-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":247,"No Rekening":"551052001928","Nama Anggota":"SRI DATI","Plafond":7000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"18-08-2026","Nama AO":"TANPA NAMA"},{"No":248,"No Rekening":"541052002962","Nama Anggota":"SRI HIDAYAWATI","Plafond":30000000,"Outstanding":22918923,"Apr":1,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"17-03-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":249,"No Rekening":"541052002756","Nama Anggota":"SRI SHOLATI","Plafond":100000000,"Outstanding":79727897,"Apr":3,"Mar":3.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"04-04-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":250,"No Rekening":"541052003121","Nama Anggota":"SRI WACHYUNI","Plafond":25000000,"Outstanding":25000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"29-04-2029","Nama AO":"TANPA NAMA"},{"No":251,"No Rekening":"541052003062","Nama Anggota":"SUBANDRIYO","Plafond":12000000,"Outstanding":9648000,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"20-10-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":252,"No Rekening":"541052002076","Nama Anggota":"SUBKHI","Plafond":3500000,"Outstanding":1166664,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"01-12-2021","Nama AO":"FINA MILATUL AZKA"},{"No":253,"No Rekening":"541052002454","Nama Anggota":"SUDIRO","Plafond":52000000,"Outstanding":46222224,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"09-11-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":254,"No Rekening":"541052002931","Nama Anggota":"SUGIYO","Plafond":19000000,"Outstanding":13588134,"Apr":0,"Mar":0.0,"Feb":2.0,"Jan":3.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"06-02-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":255,"No Rekening":"541052002270","Nama Anggota":"SUGIYONO","Plafond":10500000,"Outstanding":6416662,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"23-02-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":256,"No Rekening":"551052000154","Nama Anggota":"SUJARNO","Plafond":8000000,"Outstanding":8000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"11-03-2014","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":257,"No Rekening":"541052003053","Nama Anggota":"SUKADRI","Plafond":25000000,"Outstanding":19195831,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"23-09-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":258,"No Rekening":"541052002893","Nama Anggota":"SUKARDI","Plafond":15000000,"Outstanding":5960000,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"02-12-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":259,"No Rekening":"541052003026","Nama Anggota":"SULASIH","Plafond":12000000,"Outstanding":9214000,"Apr":1,"Mar":1.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"15-07-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":260,"No Rekening":"541052003030","Nama Anggota":"SULASTRI","Plafond":2000000,"Outstanding":647728,"Apr":1,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"01-06-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":261,"No Rekening":"541052002486","Nama Anggota":"SUMARNI","Plafond":150000000,"Outstanding":150000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"28-12-2025","Nama AO":"FINA MILATUL AZKA"},{"No":262,"No Rekening":"541052003059","Nama Anggota":"SUMARYAM","Plafond":4000000,"Outstanding":1709090,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"08-08-2026","Nama AO":"FINA MILATUL AZKA"},{"No":263,"No Rekening":"543052000039","Nama Anggota":"SUNARTI","Plafond":25000000,"Outstanding":19606551,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"05-07-2029","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":264,"No Rekening":"541052002669","Nama Anggota":"SUNARTO","Plafond":100000000,"Outstanding":78734982,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"28-11-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":265,"No Rekening":"551052001918","Nama Anggota":"SUPANTO","Plafond":4000000,"Outstanding":2000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"20-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":266,"No Rekening":"541052002942","Nama Anggota":"SUPARI","Plafond":10000000,"Outstanding":4866662,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"18-02-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":267,"No Rekening":"541052002787","Nama Anggota":"SUPRAPTINI","Plafond":10000000,"Outstanding":1053326,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"07-06-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":268,"No Rekening":"551052001939","Nama Anggota":"SUPRAYITNO","Plafond":15000000,"Outstanding":15000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"13-09-2026","Nama AO":"TANPA NAMA"},{"No":269,"No Rekening":"541052003036","Nama Anggota":"SUPRIANTO","Plafond":2000000,"Outstanding":728203,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"22-08-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":270,"No Rekening":"551052000575","Nama Anggota":"SUPRIYANTO","Plafond":300000000,"Outstanding":300000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"05-04-2017","Nama AO":"FINA MILATUL AZKA"},{"No":271,"No Rekening":"541052003108","Nama Anggota":"SURAJI","Plafond":29000000,"Outstanding":28188347,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"26-02-2029","Nama AO":"TANPA NAMA"},{"No":272,"No Rekening":"541052003119","Nama Anggota":"SURATIN","Plafond":4000000,"Outstanding":4000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"21-04-2027","Nama AO":"TANPA NAMA"},{"No":273,"No Rekening":"541052003061","Nama Anggota":"SURATMI","Plafond":4000000,"Outstanding":3215998,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"14-10-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":274,"No Rekening":"541052003063","Nama Anggota":"SURINI","Plafond":5000000,"Outstanding":3570173,"Apr":0,"Mar":1.0,"Feb":1.0,"Jan":0.0,"Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"23-04-2027","Nama AO":"FINA MILATUL AZKA"},{"No":275,"No Rekening":"541052003069","Nama Anggota":"SURIP","Plafond":140000000,"Outstanding":127886636,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"11-11-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":276,"No Rekening":"541052000235","Nama Anggota":"SURIP SUTRESNO","Plafond":6000000,"Outstanding":5000000,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-01-2016","Nama AO":"FINA MILATUL AZKA"},{"No":277,"No Rekening":"541052002987","Nama Anggota":"SURONO","Plafond":13000000,"Outstanding":9328901,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"14-11-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":278,"No Rekening":"541052001420","Nama Anggota":"SUROSO","Plafond":70000000,"Outstanding":42777784,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"06-07-2021","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":279,"No Rekening":"541052003070","Nama Anggota":"SUSANTO","Plafond":5000000,"Outstanding":3084934,"Apr":0,"Mar":1.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"13-11-2026","Nama AO":"FINA MILATUL AZKA"},{"No":280,"No Rekening":"541052001398","Nama Anggota":"SUSMIYATI","Plafond":40000000,"Outstanding":28888890,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"02-06-2021","Nama AO":"FINA MILATUL AZKA"},{"No":281,"No Rekening":"541052002913","Nama Anggota":"SUTIMAH","Plafond":12000000,"Outstanding":5274559,"Apr":2,"Mar":2.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"03-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":282,"No Rekening":"551052001937","Nama Anggota":"SUUD","Plafond":5000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"09-09-2026","Nama AO":"TANPA NAMA"},{"No":283,"No Rekening":"551052001034","Nama Anggota":"SUWANDI","Plafond":4000000,"Outstanding":4000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"28-04-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":284,"No Rekening":"541052003109","Nama Anggota":"SUYANTI","Plafond":20000000,"Outstanding":19442667,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-03-2028","Nama AO":"TANPA NAMA"},{"No":285,"No Rekening":"541052003112","Nama Anggota":"SYAEFUDIN ZUHRI","Plafond":5000000,"Outstanding":4646795,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"13-03-2027","Nama AO":"TANPA NAMA"},{"No":286,"No Rekening":"541052002964","Nama Anggota":"SYAIR","Plafond":20000000,"Outstanding":18642640,"Apr":3,"Mar":3.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"17-03-2028","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":287,"No Rekening":"551052000573","Nama Anggota":"TAATI","Plafond":2000000,"Outstanding":2000000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"04-04-2017","Nama AO":"FINA MILATUL AZKA"},{"No":288,"No Rekening":"541052003105","Nama Anggota":"TAHRONI","Plafond":60000000,"Outstanding":58045044,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"18-02-2029","Nama AO":"TANPA NAMA"},{"No":289,"No Rekening":"541052000548","Nama Anggota":"TARMAI","Plafond":6000000,"Outstanding":5600000,"Apr":4,"Mar":4.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"30-12-2017","Nama AO":"TANPA NAMA"},{"No":290,"No Rekening":"551052001932","Nama Anggota":"TARSONO","Plafond":3000000,"Outstanding":3000000,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"04-09-2026","Nama AO":"TANPA NAMA"},{"No":291,"No Rekening":"551052000416","Nama Anggota":"TEGUH MARYONO","Plafond":1500000,"Outstanding":1500000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"25-11-2015","Nama AO":"FINA MILATUL AZKA"},{"No":292,"No Rekening":"541052003060","Nama Anggota":"TEZNA ERVIANA","Plafond":7000000,"Outstanding":4998244,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"13-04-2027","Nama AO":"FINA MILATUL AZKA"},{"No":293,"No Rekening":"541052001508","Nama Anggota":"TITI HARYANTI","Plafond":100000000,"Outstanding":88888888,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"04-10-2021","Nama AO":"TANPA NAMA"},{"No":294,"No Rekening":"541052001862","Nama Anggota":"TITIN SUWARNI","Plafond":190000000,"Outstanding":126666664,"Apr":4,"Mar":4.0,"Feb":3.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"29-10-2022","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":295,"No Rekening":"541052003019","Nama Anggota":"TIWIK HANDINI","Plafond":10000000,"Outstanding":4503207,"Apr":1,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"01-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":296,"No Rekening":"551052001921","Nama Anggota":"TIYAS PRIYANTINI","Plafond":150000000,"Outstanding":150000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"BERUBAH","Tanggal Jatuh Tempo":"29-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":297,"No Rekening":"551052001935","Nama Anggota":"TOARI","Plafond":2500000,"Outstanding":2500000,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"09-09-2026","Nama AO":"TANPA NAMA"},{"No":298,"No Rekening":"541052003056","Nama Anggota":"TOHA","Plafond":12000000,"Outstanding":6415383,"Apr":0,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"06-10-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":299,"No Rekening":"541052002770","Nama Anggota":"TRI HADI WIBOWO","Plafond":40000000,"Outstanding":17699995,"Apr":3,"Mar":3.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"16-05-2026","Nama AO":"FINA MILATUL AZKA"},{"No":300,"No Rekening":"541052003111","Nama Anggota":"TRI KURNIASIH","Plafond":135000000,"Outstanding":133394726,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"13-09-2029","Nama AO":"TANPA NAMA"},{"No":301,"No Rekening":"541052002844","Nama Anggota":"TRI PUJI HASTUTI","Plafond":60000000,"Outstanding":34880624,"Apr":1,"Mar":1.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"28-08-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":302,"No Rekening":"541052002874","Nama Anggota":"TURIPAH","Plafond":6000000,"Outstanding":2107000,"Apr":1,"Mar":2.0,"Feb":1.0,"Jan":2.0,"Des":"2","Progres":"BERUBAH","Tanggal Jatuh Tempo":"24-10-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":303,"No Rekening":"551052001718","Nama Anggota":"TURIPAH","Plafond":12000000,"Outstanding":12000000,"Apr":1,"Mar":1.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"28-08-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":304,"No Rekening":"542052000031","Nama Anggota":"TURIS","Plafond":10000000,"Outstanding":3511661,"Apr":0,"Mar":2.0,"Feb":0.0,"Jan":1.0,"Des":"1","Progres":"BERUBAH","Tanggal Jatuh Tempo":"29-11-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":305,"No Rekening":"551052000729","Nama Anggota":"TURYANTO","Plafond":3500000,"Outstanding":3500000,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"13-10-2018","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":306,"No Rekening":"551052001919","Nama Anggota":"TUTUR INAYAH","Plafond":5000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"BERUBAH","Tanggal Jatuh Tempo":"21-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":307,"No Rekening":"541052003096","Nama Anggota":"TUTUR TURAH","Plafond":25000000,"Outstanding":23920046,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"29-01-2029","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":308,"No Rekening":"551052001155","Nama Anggota":"UMAYATI","Plafond":945000000,"Outstanding":945000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"30-06-2022","Nama AO":"FINA MILATUL AZKA"},{"No":309,"No Rekening":"541052002951","Nama Anggota":"UMI YUNURROINI","Plafond":20000000,"Outstanding":8790936,"Apr":1,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"07-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":310,"No Rekening":"541052002948","Nama Anggota":"UMUL FADHILAH","Plafond":8000000,"Outstanding":2564333,"Apr":0,"Mar":1.0,"Feb":1.0,"Jan":1.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"05-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":311,"No Rekening":"551052001924","Nama Anggota":"UNTUNG","Plafond":5000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"09-08-2026","Nama AO":"TANPA NAMA"},{"No":312,"No Rekening":"541052003075","Nama Anggota":"UNTUNG PRAYITNO","Plafond":5000000,"Outstanding":3136363,"Apr":0,"Mar":0.0,"Feb":1.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"05-10-2026","Nama AO":"FINA MILATUL AZKA"},{"No":313,"No Rekening":"541052002297","Nama Anggota":"UNTUNG SETYA BUDI","Plafond":20000000,"Outstanding":7500005,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"21-04-2024","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":314,"No Rekening":"541052001824","Nama Anggota":"USWATUN HASANAH","Plafond":4000000,"Outstanding":222226,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"12-03-2021","Nama AO":"FINA MILATUL AZKA"},{"No":315,"No Rekening":"542052000027","Nama Anggota":"VENY KHOIRUNISA","Plafond":27000000,"Outstanding":11627028,"Apr":2,"Mar":2.0,"Feb":1.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"16-11-2026","Nama AO":"FINA MILATUL AZKA"},{"No":316,"No Rekening":"541052003078","Nama Anggota":"WAHIDATUN NISAK","Plafond":10000000,"Outstanding":6974360,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"16-12-2026","Nama AO":"FINA MILATUL AZKA"},{"No":317,"No Rekening":"551052000515","Nama Anggota":"WAHIDIN","Plafond":5000000,"Outstanding":5000000,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"10-06-2016","Nama AO":"FINA MILATUL AZKA"},{"No":318,"No Rekening":"541052002928","Nama Anggota":"WAHONO","Plafond":2500000,"Outstanding":910259,"Apr":2,"Mar":2.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"06-02-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":319,"No Rekening":"541052003091","Nama Anggota":"WAHONO","Plafond":30000000,"Outstanding":28704055,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"20-01-2029","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":320,"No Rekening":"541052002950","Nama Anggota":"WAHYO","Plafond":10000000,"Outstanding":8146196,"Apr":3,"Mar":3.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"06-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":321,"No Rekening":"541052000588","Nama Anggota":"WAHYUDIN","Plafond":40000000,"Outstanding":24999997,"Apr":4,"Mar":4.0,"Feb":2.0,"Jan":1.0,"Des":"1","Progres":"TETAP","Tanggal Jatuh Tempo":"10-09-2017","Nama AO":"TANPA NAMA"},{"No":322,"No Rekening":"541052002846","Nama Anggota":"WAHYUNINGSIH","Plafond":24000000,"Outstanding":4960000,"Apr":0,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"30-08-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":323,"No Rekening":"541052002966","Nama Anggota":"WARIS","Plafond":4000000,"Outstanding":1282167,"Apr":0,"Mar":0.0,"Feb":2.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"18-09-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":324,"No Rekening":"541052003116","Nama Anggota":"WARIS","Plafond":3500000,"Outstanding":3500000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"13-04-2027","Nama AO":"TANPA NAMA"},{"No":325,"No Rekening":"541052002978","Nama Anggota":"WARLINAH","Plafond":10000000,"Outstanding":5719996,"Apr":0,"Mar":0.0,"Feb":3.0,"Jan":2.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"17-04-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":326,"No Rekening":"551052001839","Nama Anggota":"WASDURI","Plafond":18000000,"Outstanding":18000000,"Apr":2,"Mar":2.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"22-11-2025","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":327,"No Rekening":"541052002804","Nama Anggota":"WYNDA SAPUTRI","Plafond":60000000,"Outstanding":31385128,"Apr":0,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"04-07-2027","Nama AO":"FINA MILATUL AZKA"},{"No":328,"No Rekening":"551052001018","Nama Anggota":"YAKUTI","Plafond":20000000,"Outstanding":20000000,"Apr":4,"Mar":4.0,"Feb":1.0,"Jan":3.0,"Des":"2","Progres":"TETAP","Tanggal Jatuh Tempo":"27-03-2020","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":329,"No Rekening":"541052003079","Nama Anggota":"YANIK KHIKMATUL ROHMANIA","Plafond":4500000,"Outstanding":3138461,"Apr":0,"Mar":0.0,"Feb":3.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"16-12-2026","Nama AO":"FINA MILATUL AZKA"},{"No":330,"No Rekening":"541052002456","Nama Anggota":"YESI RAHMAWATI","Plafond":277000000,"Outstanding":272383333,"Apr":4,"Mar":4.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"17-11-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":331,"No Rekening":"551052001942","Nama Anggota":"YOSI ELIANI","Plafond":12000000,"Outstanding":12000000,"Apr":0,"Mar":"","Feb":"","Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"20-10-2026","Nama AO":"TANPA NAMA"},{"No":332,"No Rekening":"551052001888","Nama Anggota":"YULIANIS","Plafond":10000000,"Outstanding":10000000,"Apr":1,"Mar":0.0,"Feb":1.0,"Jan":1.0,"Des":"2","Progres":"BERUBAH","Tanggal Jatuh Tempo":"22-03-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":333,"No Rekening":"551052001917","Nama Anggota":"YUNIKA DEWI PURNAMASARI","Plafond":15000000,"Outstanding":7000000,"Apr":1,"Mar":0.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"BERUBAH","Tanggal Jatuh Tempo":"14-07-2026","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"},{"No":334,"No Rekening":"551052001931","Nama Anggota":"ZAENAL ABIDIN","Plafond":5000000,"Outstanding":5000000,"Apr":1,"Mar":0.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"BERUBAH","Tanggal Jatuh Tempo":"27-08-2026","Nama AO":"TANPA NAMA"},{"No":335,"No Rekening":"551052001787","Nama Anggota":"ZAENUDIN","Plafond":40000000,"Outstanding":40000000,"Apr":3,"Mar":3.0,"Feb":0.0,"Jan":0.0,"Des":"0","Progres":"TETAP","Tanggal Jatuh Tempo":"31-07-2025","Nama AO":"FINA MILATUL AZKA"},{"No":336,"No Rekening":"544052000714","Nama Anggota":"ZAENUL MUSHOFFA","Plafond":1500000,"Outstanding":750000,"Apr":4,"Mar":4.0,"Feb":4.0,"Jan":4.0,"Des":"4","Progres":"TETAP","Tanggal Jatuh Tempo":"05-03-2020","Nama AO":"FINA MILATUL AZKA"},{"No":337,"No Rekening":"541052002867","Nama Anggota":"ZAMRONI","Plafond":25000000,"Outstanding":17243813,"Apr":2,"Mar":2.0,"Feb":0.0,"Jan":"","Des":"","Progres":"TETAP","Tanggal Jatuh Tempo":"10-10-2027","Nama AO":"DIMAS RIZKI PUTRA SULISTIO"}];
+// =========================================================
+
+const PAGE_SIZE = 25;
+let dataAll = [];
+let filtered = [];
+let currentPage = 1;
+let chartAO = null;
+
+function addLog(msg, type='') {
+    const el = document.getElementById('logBody');
+    const now = new Date().toTimeString().split(' ')[0];
+    el.innerHTML += `<div><span class="log-time">[${now}]</span><span class="${type}">${msg}</span></div>`;
+    el.scrollTop = el.scrollHeight;
+}
+
+function num(v) {
+    if (v === '' || v === null || v === undefined) return 0;
+    return Number(String(v).replace(/[^0-9.\-]/g,'')) || 0;
+}
+
+function fRp(v) {
+    const n = Math.round(num(v));
+    if (n >= 1_000_000_000) return 'Rp ' + (n/1_000_000_000).toFixed(2) + 'M';
+    if (n >= 1_000_000) return 'Rp ' + (n/1_000_000).toFixed(2) + 'jt';
+    return 'Rp ' + n.toLocaleString('id-ID');
+}
+
+function fRpFull(v) {
+    return 'Rp ' + Math.round(num(v)).toLocaleString('id-ID');
+}
+
+function angDot(val) {
+    const v = String(val).trim();
+    if (v === '' || v === 'nan') return `<span class="dot-ang aX" title="—">·</span>`;
+    const n = parseInt(v);
+    if (isNaN(n)) return `<span class="dot-ang aX" title="?">?</span>`;
+    const cls = ['a0','a1','a2','a3','a4'][n] || 'a4';
+    return `<span class="dot-ang ${cls}" title="Nilai: ${n}">${n}</span>`;
+}
+
+function processData(rows, label) {
+    dataAll = rows.map((r, idx) => ({
+        ...r,
+        _id: idx,
+        _nama: String(r['Nama Anggota'] || '').trim() || 'Tanpa Nama',
+        _norek: String(r['No Rekening'] || '').trim(),
+        _plafond: num(r['Plafond']),
+        _os: num(r['Outstanding']),
+        _progres: String(r['Progres'] || '').toUpperCase().includes('BERUBAH') ? 'BERUBAH' : 'TETAP',
+        _ao: String(r['Nama AO'] || '').trim() || 'TANPA NAMA',
+        _hp: String(r['No HP'] || r['No WA'] || r['HP'] || r['Telepon'] || '').trim(),
+        _tgl: String(r['Tanggal Jatuh Tempo'] || '').trim(),
+        _alamat: String(r['Alamat'] || '').trim(),
+        _ketrek: String(r['Keterangan Rekening'] || r['Ket Rekening'] || r['Keterangan'] || '').trim(),
+        _apr: r['Apr'], _mar: r['Mar'], _feb: r['Feb'], _jan: r['Jan'], _des: r['Des']
+    }));
+    addLog(`Data dimuat: <strong>${label}</strong> — ${dataAll.length} baris.`, 'log-ok');
+    document.getElementById('dataBadge').textContent = dataAll.length + ' records';
+    loadAO();
+    refresh();
+}
+
+function loadAO() {
+    const sel = document.getElementById('fAO');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Semua AO</option>';
+    [...new Set(dataAll.map(x => x._ao))].sort().forEach(a => {
+        sel.innerHTML += `<option value="${a}">${a}</option>`;
+    });
+    if (cur) sel.value = cur;
+}
+
+function refresh() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const ao = document.getElementById('fAO').value;
+    const prog = document.getElementById('fProgres').value;
+    const apr = document.getElementById('fApr').value;
+
+    filtered = dataAll.filter(x => {
+        const matchQ = !q || x._nama.toLowerCase().includes(q) || x._norek.includes(q);
+        const matchAO = !ao || x._ao === ao;
+        const matchP = !prog || x._progres === prog;
+        const matchApr = !apr || String(parseInt(x._apr)) === apr;
+        return matchQ && matchAO && matchP && matchApr;
+    });
+
+    // Sort by outstanding desc
+    filtered.sort((a,b) => b._os - a._os);
+
+    // KPIs
+    let totalOS = 0, totalPlafond = 0, nTetap = 0, nBerubah = 0;
+    filtered.forEach(x => {
+        totalOS += x._os;
+        totalPlafond += x._plafond;
+        if (x._progres === 'TETAP') nTetap++;
+        else nBerubah++;
+    });
+    document.getElementById('kAnggota').textContent = filtered.length.toLocaleString('id-ID');
+    document.getElementById('kOutstanding').textContent = fRp(totalOS);
+    document.getElementById('kTetap').textContent = nTetap;
+    document.getElementById('kBerubah').textContent = nBerubah;
+    document.getElementById('kPlafond').textContent = fRp(totalPlafond);
+    const pct = filtered.length > 0;
+    document.getElementById('kTetapPct').textContent = pct ? ((nTetap/filtered.length)*100).toFixed(1)+'% dari total' : '—';
+    document.getElementById('kBerubahPct').textContent = pct ? ((nBerubah/filtered.length)*100).toFixed(1)+'% dari total' : '—';
+
+    // Chart AO
+    const aoMap = {};
+    filtered.forEach(x => { aoMap[x._ao] = (aoMap[x._ao]||0) + x._os; });
+    if (chartAO) chartAO.destroy();
+    const ctx = document.getElementById('chartAO').getContext('2d');
+    const aoLabels = Object.keys(aoMap);
+    const aoVals = Object.values(aoMap);
+    chartAO = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: aoLabels,
+            datasets: [{
+                label: 'Outstanding',
+                data: aoVals,
+                backgroundColor: aoVals.map((_,i) => ['#388bfd88','#3fb95088','#d2992288','#39c5cf88','#f8514988'][i%5]),
+                borderColor: ['#388bfd','#3fb950','#d29922','#39c5cf','#f85149'],
+                borderWidth: 1.5,
+                borderRadius: 5,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ' ' + fRpFull(ctx.raw) } }
+            },
+            scales: {
+                x: { ticks: { color: '#7d8590', font: {size:11} }, grid: { color: '#30363d' } },
+                y: { beginAtZero: true, ticks: { color: '#7d8590', font: {size:11}, callback: v => fRp(v) }, grid: { color: '#30363d30' } }
+            }
+        }
+    });
+
+    // Ranking
+    const top10 = [...filtered].slice(0, 10);
+    document.getElementById('ranking').innerHTML = top10.map((x, i) =>
+        `<li>
+            <span class="rank-num">${i+1}</span>
+            <span class="rank-name">${x._nama}</span>
+            <span class="rank-val">${fRp(x._os)}</span>
+        </li>`
+    ).join('');
+
+    // Table with pagination
+    currentPage = 1;
+    renderTable();
+}
+
+function renderTable() {
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageData = filtered.slice(start, start + PAGE_SIZE);
+
+    document.getElementById('tableCount').textContent = `${total.toLocaleString('id-ID')} anggota · Hal ${currentPage}/${totalPages}`;
+
+    document.getElementById('tbody').innerHTML = pageData.map((r, ri) => {
+        let cleanHP = String(r._hp).replace(/\D/g,'');
+        if (cleanHP.startsWith('0')) cleanHP = '62' + cleanHP.slice(1);
+        const waBtn = cleanHP
+            ? `<a class="btn-wa" href="https://wa.me/${cleanHP}?text=Halo%20${encodeURIComponent(r._nama)}%2C%20mohon%20konfirmasi%20data%20koperasi%20Anda." target="_blank">💬 WA</a>`
+            : `<span style="color:var(--muted);font-size:11px">No HP kosong</span>`;
+
+        const angRow = [r._apr, r._mar, r._feb, r._jan, r._des]
+            .map(v => angDot(v)).join('');
+
+        return `<tr>
+            <td class="mono" style="color:var(--muted)">${start + ri + 1}</td>
+            <td><strong>${r._nama}</strong></td>
+            <td class="mono" style="color:var(--muted)">${r._norek}</td>
+            <td class="mono">${fRp(r._plafond)}</td>
+            <td class="mono" style="color:var(--cyan)">${fRpFull(r._os)}</td>
+            <td><div class="angsuran-cell">${angRow}</div></td>
+            <td><span class="badge ${r._progres === 'TETAP' ? 'tetap' : 'berubah'}">${r._progres}</span></td>
+            <td class="mono" style="font-size:11px;color:var(--muted)">${r._tgl||'—'}</td>
+            <td style="font-size:12px">${r._ao}</td>
+            <td style="font-size:12px;color:var(--muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r._alamat||''}">${r._alamat || '<span style="color:#444">—</span>'}</td>
+            <td style="font-size:12px;color:var(--muted);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r._ketrek||''}">${r._ketrek || '<span style="color:#444">—</span>'}</td>
+            <td>${waBtn}</td>
+            <td><button class="btn-edit" onclick="openModal(${r._id})">Edit</button></td>
+        </tr>`;
+    }).join('');
+
+    renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+    const pag = document.getElementById('pagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+    let html = `<button class="page-btn" onclick="goPage(${currentPage-1})">‹</button>`;
+    const range = [];
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 2) range.push(i);
+        else if (range[range.length-1] !== '...') range.push('...');
+    }
+    range.forEach(p => {
+        if (p === '...') html += `<span class="page-info">…</span>`;
+        else html += `<button class="page-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+    });
+    html += `<button class="page-btn" onclick="goPage(${currentPage+1})">›</button>`;
+    pag.innerHTML = html;
+}
+
+function goPage(p) {
+    const max = Math.ceil(filtered.length / PAGE_SIZE);
+    if (p < 1 || p > max) return;
+    currentPage = p;
+    renderTable();
+    document.querySelector('.table-panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// Edit modal
+function openModal(id) {
+    const r = dataAll.find(x => x._id === id);
+    if (!r) return;
+    document.getElementById('editIdx').value = id;
+    document.getElementById('editNama').value = r._nama;
+    document.getElementById('editOS').value = r._os;
+    document.getElementById('editProg').value = r._progres;
+    document.getElementById('editAO2').value = r._ao;
+    document.getElementById('editHP').value = r._hp;
+    document.getElementById('editAlamat').value = r._alamat;
+    document.getElementById('editKetRek').value = r._ketrek;
+    document.getElementById('editModal').classList.add('open');
+}
+function closeModal() {
+    document.getElementById('editModal').classList.remove('open');
+}
+function saveEdit() {
+    const id = parseInt(document.getElementById('editIdx').value);
+    const r = dataAll.find(x => x._id === id);
+    if (!r) return;
+    r._nama = document.getElementById('editNama').value;
+    r['Nama Anggota'] = r._nama;
+    r._os = num(document.getElementById('editOS').value);
+    r['Outstanding'] = r._os;
+    r._progres = document.getElementById('editProg').value;
+    r['Progres'] = r._progres;
+    r._ao = document.getElementById('editAO2').value;
+    r['Nama AO'] = r._ao;
+    r._hp = document.getElementById('editHP').value;
+    r._alamat = document.getElementById('editAlamat').value;
+    r['Alamat'] = r._alamat;
+    r._ketrek = document.getElementById('editKetRek').value;
+    r['Keterangan Rekening'] = r._ketrek;
+    closeModal();
+    addLog(`Data <strong>${r._nama}</strong> diperbarui.`, 'log-ok');
+    loadAO();
+    refresh();
+}
+
+// Export
+function exportCSV() {
+    if (!filtered.length) return alert('Tidak ada data untuk diekspor!');
+    const keys = ['No','No Rekening','Nama Anggota','Plafond','Outstanding','Apr','Mar','Feb','Jan','Des','Progres','Tanggal Jatuh Tempo','Nama AO','Alamat','Keterangan Rekening'];
+    const rows = [keys.join(',')];
+    filtered.forEach(r => {
+        rows.push(keys.map(k => {
+            const v = String(r[k] ?? '').replace(/"/g,'""');
+            return v.includes(',') ? `"${v}"` : v;
+        }).join(','));
+    });
+    const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'export_koperasi.csv'; a.click();
+    URL.revokeObjectURL(url);
+    addLog(`Export CSV: ${filtered.length} baris.`, 'log-ok');
+}
+
+// CSV file upload (opsional, override embedded data)
+document.getElementById('csvFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const text = ev.target.result;
+        const lines = text.trim().split('\n');
+        const sep = lines[0].includes(';') ? ';' : ',';
+        const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,''));
+        const rows = lines.slice(1).filter(l => l.trim()).map(line => {
+            const vals = line.split(sep).map(v => v.trim().replace(/^"|"$/g,''));
+            const obj = {};
+            headers.forEach((h,i) => obj[h] = vals[i] ?? '');
+            return obj;
+        });
+        processData(rows, file.name);
+    };
+    reader.readAsText(file, 'utf-8');
+});
+
+// Filter events
+['search','fAO','fProgres','fApr'].forEach(id => {
+    document.getElementById(id).addEventListener('input', refresh);
+    document.getElementById(id).addEventListener('change', refresh);
+});
+
+// Load embedded data on start
+processData(EMBEDDED_DATA, 'limpung.csv (embedded)');
+</script>
+</body>
+</html>
