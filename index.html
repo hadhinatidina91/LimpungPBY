@@ -793,6 +793,13 @@
                 <button class="btn btn-export" style="flex:1;" onclick="exportMarketingPDF()">🖨️ PDF</button>
             </div>
         </div>
+        <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div>
+                <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">🔐 Mode Admin</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="mAdminStatus">Nonaktif — hapus laporan terkunci</div>
+            </div>
+            <button class="btn btn-export" id="mAdminBtn" onclick="toggleAdmin()">Masuk Admin</button>
+        </div>
     </div>
 </div>
 
@@ -1240,20 +1247,45 @@ function switchTab(tab) {
 // LAPORAN MARKETING HARIAN (Firebase Realtime Database)
 // =========================================================
 const firebaseConfig = {
-    apiKey: "AIzaSyAvmLzwZECEnsJj2htuU8D7UzJSuxfQoQQ",
-    authDomain: "tagihan-akhir-bulan.firebaseapp.com",
-    databaseURL: "https://tagihan-akhir-bulan-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "tagihan-akhir-bulan",
-    storageBucket: "tagihan-akhir-bulan.firebasestorage.app",
-    messagingSenderId: "894297291183",
-    appId: "1:894297291183:web:5abdf89a5105245603175a",
-    measurementId: "G-DMEJMPH5ZP"
+    apiKey: "AIzaSyAF6SwxLv6e1BpvOm_n1lMB1GnN5ZjSVnM",
+    authDomain: "pembiayaankpnlimpung.firebaseapp.com",
+    databaseURL: "https://pembiayaankpnlimpung-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "pembiayaankpnlimpung",
+    storageBucket: "pembiayaankpnlimpung.firebasestorage.app",
+    messagingSenderId: "162750710548",
+    appId: "1:162750710548:web:feee95cb39b9e7456ff801",
+    measurementId: "G-FPC1RN1R5N"
 };
 firebase.initializeApp(firebaseConfig);
 const mDb = firebase.database().ref('laporanMarketing');
 
 let marketingReports = [];
 let mLokasiCoord = null;
+let adminUnlocked = false;
+const ADMIN_CODE = '9999';
+
+function toggleAdmin() {
+    if (adminUnlocked) {
+        adminUnlocked = false;
+        document.getElementById('mAdminStatus').textContent = 'Nonaktif — hapus laporan terkunci';
+        document.getElementById('mAdminBtn').textContent = 'Masuk Admin';
+        addLog('Mode admin dinonaktifkan.', '');
+        refreshMarketing();
+        return;
+    }
+    const kode = prompt('Masukkan kode admin:');
+    if (kode === null) return;
+    if (kode !== ADMIN_CODE) {
+        alert('Kode admin salah.');
+        addLog('Percobaan masuk admin gagal (kode salah).', 'log-err');
+        return;
+    }
+    adminUnlocked = true;
+    document.getElementById('mAdminStatus').textContent = 'Aktif — hapus laporan diizinkan';
+    document.getElementById('mAdminBtn').textContent = 'Keluar Admin';
+    addLog('Mode admin diaktifkan.', 'log-ok');
+    refreshMarketing();
+}
 
 // Dengarkan perubahan data secara realtime dari Firebase
 mDb.on('value', snapshot => {
@@ -1378,6 +1410,10 @@ function resetFormMarketing() {
 }
 
 function hapusLaporan(id) {
+    if (!adminUnlocked) {
+        alert('Hanya admin yang bisa menghapus laporan. Aktifkan Mode Admin dulu (kode diperlukan).');
+        return;
+    }
     if (!confirm('Hapus laporan kunjungan ini?')) return;
     firebase.database().ref('laporanMarketing/' + id).remove()
         .then(() => addLog('Laporan kunjungan dihapus dari Firebase.', 'log-err'))
@@ -1439,7 +1475,9 @@ function refreshMarketing() {
             <td class="mono" style="font-size:11px;color:var(--muted)">${r.target || '—'}</td>
             <td>${r.foto ? `<a href="${r.foto}" target="_blank" style="color:var(--blue);font-size:11px;">🖼️ Lihat</a>` : '<span style="color:#444">—</span>'}</td>
             <td>${r.lokasi ? `<a href="https://maps.google.com/?q=${r.lokasi.lat},${r.lokasi.lng}" target="_blank" style="color:var(--cyan);font-size:11px;">📍 Peta</a>` : '<span style="color:#444">—</span>'}</td>
-            <td><button class="btn-edit" onclick="hapusLaporan('${r._id}')">🗑️ Hapus</button></td>
+            <td>${adminUnlocked
+                ? `<button class="btn-edit" onclick="hapusLaporan('${r._id}')">🗑️ Hapus</button>`
+                : `<button class="btn-edit" style="opacity:.6;cursor:not-allowed" onclick="toggleAdmin()" title="Aktifkan Mode Admin untuk menghapus">🔒 Terkunci</button>`}</td>
         </tr>
     `).join('');
 }
