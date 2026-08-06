@@ -410,6 +410,42 @@
         .upload-label { font-size: 12px; color: var(--muted); }
         .upload-bar input[type=file] { font-size: 12px; color: var(--muted); }
         .upload-note { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+        /* TABS */
+        .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { border-color: var(--blue); color: var(--text); }
+        .tab-btn.active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* MARKETING FORM */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px; margin-bottom: 14px; }
+        .form-grid textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            outline: none;
+            resize: vertical;
+        }
+        .form-grid .form-group input:focus,
+        .form-grid .form-group select:focus { border-color: var(--blue); }
     </style>
 </head>
 <body>
@@ -420,6 +456,11 @@
         <p>KCP Limpung · Data Penagihan Anggota</p>
     </div>
     <div class="header-badge" id="dataBadge">Memuat data...</div>
+</div>
+
+<div class="tabs">
+    <button class="tab-btn active" id="tabBtnDashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+    <button class="tab-btn" id="tabBtnMarketing" onclick="switchTab('marketing')">📋 Laporan Marketing Harian</button>
 </div>
 
 <style>
@@ -508,6 +549,8 @@
 .detail-val { color: var(--text); font-weight: 600; text-align: right; }
 .detail-footer { margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; }
 </style>
+
+<div id="tab-dashboard" class="tab-content active">
 
 <div class="search-wrap">
     <input id="search" placeholder="🔍  Ketik nama anggota atau no rekening..." autocomplete="off">
@@ -639,6 +682,145 @@
         <div><span class="log-time">[00:00:00]</span><span class="log-ok">Kolom Call bulan Agustus terisi dari AGUSXL.XLS (Coll) untuk 325 rekening aktif.</span></div>
     </div>
 </div>
+
+</div>
+<!-- /tab-dashboard -->
+
+<!-- ================= TAB: LAPORAN MARKETING HARIAN ================= -->
+<div id="tab-marketing" class="tab-content">
+
+<div class="panel" style="margin-bottom:20px;">
+    <h3><span class="dot" style="background:var(--green)"></span> Form Laporan Kunjungan</h3>
+    <div class="form-grid">
+        <div class="form-group">
+            <label>Tanggal</label>
+            <input type="date" id="mTanggal">
+        </div>
+        <div class="form-group">
+            <label>Nama AO</label>
+            <select id="mAO"><option value="">Pilih AO</option></select>
+        </div>
+        <div class="form-group" style="position:relative;">
+            <label>Nama Debitur</label>
+            <input type="text" id="mDebitur" placeholder="Ketik nama debitur..." autocomplete="off">
+            <div class="autocomplete-list" id="mAcList"></div>
+        </div>
+        <div class="form-group">
+            <label>Status Hasil Kunjungan</label>
+            <select id="mStatus">
+                <option>Bertemu Debitur</option>
+                <option>Tidak Bertemu</option>
+                <option>Janji Bayar</option>
+                <option>Sudah Bayar</option>
+                <option>Pindah Alamat</option>
+                <option>Menolak</option>
+                <option>Lainnya</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Target Bayar (opsional)</label>
+            <input type="date" id="mTarget">
+        </div>
+        <div class="form-group">
+            <label>Foto Kunjungan (opsional)</label>
+            <input type="file" id="mFoto" accept="image/*" capture="environment">
+        </div>
+        <div class="form-group">
+            <label>Lokasi GPS (opsional)</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button type="button" class="btn btn-export" onclick="ambilLokasi()">📍 Ambil Lokasi</button>
+                <span id="mLokasiText" style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">belum diambil</span>
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Hasil Kunjungan</label>
+        <textarea id="mHasil" rows="3" placeholder="Tuliskan detail hasil kunjungan..."></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:10px;">
+        <button class="btn btn-cancel" onclick="resetFormMarketing()">Reset</button>
+        <button class="btn btn-primary" onclick="simpanLaporan()">💾 Simpan Laporan</button>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi k-blue">
+        <div class="kpi-label">Total Kunjungan</div>
+        <div class="kpi-value" id="mKTotal">0</div>
+        <div class="kpi-sub">hasil filter aktif</div>
+    </div>
+    <div class="kpi k-amber">
+        <div class="kpi-label">Janji Bayar</div>
+        <div class="kpi-value" id="mKJanji">0</div>
+        <div class="kpi-sub">menunggu realisasi</div>
+    </div>
+    <div class="kpi k-green">
+        <div class="kpi-label">Berhasil Ditagih</div>
+        <div class="kpi-value" id="mKBerhasil">0</div>
+        <div class="kpi-sub">status sudah bayar</div>
+    </div>
+    <div class="kpi k-red">
+        <div class="kpi-label">Tidak Bertemu</div>
+        <div class="kpi-value" id="mKTidakBertemu">0</div>
+        <div class="kpi-sub">perlu kunjungan ulang</div>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="panel">
+        <h3><span class="dot"></span> Kunjungan per AO</h3>
+        <ol class="ranking-list" id="mAORanking"></ol>
+    </div>
+    <div class="panel">
+        <h3><span class="dot" style="background:var(--amber)"></span> Filter Laporan</h3>
+        <div class="form-grid" style="grid-template-columns:1fr;">
+            <select id="mFilterAO"><option value="">Semua AO</option></select>
+            <select id="mFilterStatus">
+                <option value="">Semua Status</option>
+                <option>Bertemu Debitur</option>
+                <option>Tidak Bertemu</option>
+                <option>Janji Bayar</option>
+                <option>Sudah Bayar</option>
+                <option>Pindah Alamat</option>
+                <option>Menolak</option>
+                <option>Lainnya</option>
+            </select>
+            <input type="date" id="mFilterTgl">
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-export" style="flex:1;" onclick="exportMarketingCSV()">⬇ Excel (CSV)</button>
+                <button class="btn btn-export" style="flex:1;" onclick="exportMarketingPDF()">🖨️ PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-panel">
+    <div class="table-header">
+        <h3>📋 Laporan Marketing Harian</h3>
+        <span class="table-count" id="mTableCount">—</span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>AO</th>
+                    <th>Debitur</th>
+                    <th>Hasil Kunjungan</th>
+                    <th>Status</th>
+                    <th>Target Bayar</th>
+                    <th>Foto</th>
+                    <th>Lokasi</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="mTbody"></tbody>
+        </table>
+    </div>
+</div>
+
+</div>
+<!-- /tab-marketing -->
 
 <!-- MODAL EDIT -->
 <div class="modal" id="editModal">
@@ -1037,6 +1219,257 @@ function closeDetailModal() {
 
 // Load embedded data on start
 processData(EMBEDDED_DATA, 'limpung.csv (embedded)');
+
+// =========================================================
+// TAB SWITCHING
+// =========================================================
+function switchTab(tab) {
+    document.getElementById('tab-dashboard').classList.toggle('active', tab === 'dashboard');
+    document.getElementById('tab-marketing').classList.toggle('active', tab === 'marketing');
+    document.getElementById('tabBtnDashboard').classList.toggle('active', tab === 'dashboard');
+    document.getElementById('tabBtnMarketing').classList.toggle('active', tab === 'marketing');
+    if (tab === 'marketing') {
+        loadMarketingAO();
+        refreshMarketing();
+    }
+}
+
+// =========================================================
+// LAPORAN MARKETING HARIAN
+// =========================================================
+let marketingReports = [];
+let mReportIdCounter = 1;
+let mLokasiCoord = null;
+
+(function initMarketingDate() {
+    const d = document.getElementById('mTanggal');
+    if (d) d.valueAsDate = new Date();
+})();
+
+function loadMarketingAO() {
+    const aoSet = new Set(dataAll.map(x => x._ao));
+    ['mAO', 'mFilterAO'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = (id === 'mAO' ? '<option value="">Pilih AO</option>' : '<option value="">Semua AO</option>');
+        [...aoSet].sort().forEach(a => { sel.innerHTML += `<option value="${a}">${a}</option>`; });
+        if (cur) sel.value = cur;
+    });
+}
+
+// Autocomplete nama debitur dari data anggota
+const mDebiturInput = document.getElementById('mDebitur');
+mDebiturInput.addEventListener('input', function () {
+    const q = this.value.trim().toLowerCase();
+    const list = document.getElementById('mAcList');
+    if (q.length < 2) { list.classList.remove('show'); return; }
+    const matches = dataAll.filter(x => x._nama.toLowerCase().includes(q)).slice(0, 10);
+    if (!matches.length) { list.classList.remove('show'); return; }
+    list.innerHTML = matches.map(x => `
+        <div class="ac-item" onclick="pilihDebitur('${x._nama.replace(/'/g, "\\'")}','${x._ao.replace(/'/g, "\\'")}')">
+            <div>
+                <div class="ac-name">${x._nama}</div>
+                <div class="ac-sub">${x._norek} · AO: ${x._ao}</div>
+            </div>
+        </div>
+    `).join('');
+    list.classList.add('show');
+});
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('#mDebitur') && !e.target.closest('#mAcList')) {
+        document.getElementById('mAcList').classList.remove('show');
+    }
+});
+function pilihDebitur(nama, ao) {
+    document.getElementById('mDebitur').value = nama;
+    if (ao) document.getElementById('mAO').value = ao;
+    document.getElementById('mAcList').classList.remove('show');
+}
+
+function ambilLokasi() {
+    if (!navigator.geolocation) {
+        alert('Geolocation tidak didukung di perangkat/browser ini.');
+        return;
+    }
+    document.getElementById('mLokasiText').textContent = 'Mengambil lokasi...';
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            mLokasiCoord = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            document.getElementById('mLokasiText').textContent = `${mLokasiCoord.lat.toFixed(5)}, ${mLokasiCoord.lng.toFixed(5)}`;
+        },
+        () => { document.getElementById('mLokasiText').textContent = 'Gagal mengambil lokasi'; }
+    );
+}
+
+function simpanLaporan() {
+    const tgl = document.getElementById('mTanggal').value;
+    const ao = document.getElementById('mAO').value;
+    const debitur = document.getElementById('mDebitur').value.trim();
+    const hasil = document.getElementById('mHasil').value.trim();
+    const status = document.getElementById('mStatus').value;
+    const target = document.getElementById('mTarget').value;
+    const fotoFile = document.getElementById('mFoto').files[0];
+
+    if (!tgl || !ao || !debitur || !status) {
+        alert('Mohon lengkapi Tanggal, Nama AO, Nama Debitur, dan Status Hasil Kunjungan.');
+        return;
+    }
+
+    const finalize = (fotoData) => {
+        marketingReports.push({
+            _id: mReportIdCounter++,
+            tanggal: tgl, ao, debitur, hasil, status, target,
+            foto: fotoData || null,
+            lokasi: mLokasiCoord
+        });
+        resetFormMarketing();
+        loadMarketingAO();
+        refreshMarketing();
+        addLog(`Laporan kunjungan <strong>${debitur}</strong> (${ao}) — ${status} disimpan.`, 'log-ok');
+    };
+
+    if (fotoFile) {
+        const reader = new FileReader();
+        reader.onload = e => finalize(e.target.result);
+        reader.readAsDataURL(fotoFile);
+    } else {
+        finalize(null);
+    }
+}
+
+function resetFormMarketing() {
+    document.getElementById('mDebitur').value = '';
+    document.getElementById('mHasil').value = '';
+    document.getElementById('mStatus').value = 'Bertemu Debitur';
+    document.getElementById('mTarget').value = '';
+    document.getElementById('mFoto').value = '';
+    mLokasiCoord = null;
+    document.getElementById('mLokasiText').textContent = 'belum diambil';
+}
+
+function hapusLaporan(id) {
+    if (!confirm('Hapus laporan kunjungan ini?')) return;
+    marketingReports = marketingReports.filter(r => r._id !== id);
+    refreshMarketing();
+    addLog('Laporan kunjungan dihapus.', 'log-err');
+}
+
+function statusBadgeClass(s) {
+    const map = {
+        'Sudah Bayar': 'tetap',
+        'Janji Bayar': 'berubah',
+        'Bertemu Debitur': 'tetap',
+        'Tidak Bertemu': 'tanpa',
+        'Menolak': 'lunas',
+        'Pindah Alamat': 'lunas',
+        'Lainnya': 'tanpa'
+    };
+    return map[s] || 'tanpa';
+}
+
+function refreshMarketing() {
+    const fAO = document.getElementById('mFilterAO').value;
+    const fStatus = document.getElementById('mFilterStatus').value;
+    const fTgl = document.getElementById('mFilterTgl').value;
+
+    const filteredM = marketingReports.filter(r => {
+        return (!fAO || r.ao === fAO) && (!fStatus || r.status === fStatus) && (!fTgl || r.tanggal === fTgl);
+    }).sort((a, b) => b.tanggal.localeCompare(a.tanggal) || b._id - a._id);
+
+    const total = filteredM.length;
+    const janji = filteredM.filter(r => r.status === 'Janji Bayar').length;
+    const berhasil = filteredM.filter(r => r.status === 'Sudah Bayar').length;
+    const tidakBertemu = filteredM.filter(r => r.status === 'Tidak Bertemu').length;
+    document.getElementById('mKTotal').textContent = total;
+    document.getElementById('mKJanji').textContent = janji;
+    document.getElementById('mKBerhasil').textContent = berhasil;
+    document.getElementById('mKTidakBertemu').textContent = tidakBertemu;
+
+    const aoMap = {};
+    filteredM.forEach(r => { aoMap[r.ao] = (aoMap[r.ao] || 0) + 1; });
+    const aoList = Object.entries(aoMap).sort((a, b) => b[1] - a[1]);
+    document.getElementById('mAORanking').innerHTML = aoList.length
+        ? aoList.map(([ao, n], i) => `
+            <li>
+                <span class="rank-num">${i + 1}</span>
+                <span class="rank-name">${ao}</span>
+                <span class="rank-val">${n} kunjungan</span>
+            </li>`).join('')
+        : '<li style="border:none;padding:8px 0;color:var(--muted);">Belum ada data kunjungan.</li>';
+
+    document.getElementById('mTableCount').textContent = `${total.toLocaleString('id-ID')} laporan`;
+
+    document.getElementById('mTbody').innerHTML = filteredM.map(r => `
+        <tr>
+            <td class="mono" style="font-size:11px;color:var(--muted)">${r.tanggal}</td>
+            <td style="font-size:12px">${r.ao}</td>
+            <td><strong>${r.debitur}</strong></td>
+            <td style="font-size:12px;color:var(--muted);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.hasil || ''}">${r.hasil || '<span style="color:#444">—</span>'}</td>
+            <td><span class="badge ${statusBadgeClass(r.status)}">${r.status}</span></td>
+            <td class="mono" style="font-size:11px;color:var(--muted)">${r.target || '—'}</td>
+            <td>${r.foto ? `<a href="${r.foto}" target="_blank" style="color:var(--blue);font-size:11px;">🖼️ Lihat</a>` : '<span style="color:#444">—</span>'}</td>
+            <td>${r.lokasi ? `<a href="https://maps.google.com/?q=${r.lokasi.lat},${r.lokasi.lng}" target="_blank" style="color:var(--cyan);font-size:11px;">📍 Peta</a>` : '<span style="color:#444">—</span>'}</td>
+            <td><button class="btn-edit" onclick="hapusLaporan(${r._id})">🗑️ Hapus</button></td>
+        </tr>
+    `).join('');
+}
+
+['mFilterAO', 'mFilterStatus', 'mFilterTgl'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', refreshMarketing);
+});
+
+function exportMarketingCSV() {
+    if (!marketingReports.length) return alert('Belum ada laporan untuk diekspor!');
+    const keys = ['Tanggal', 'AO', 'Debitur', 'Hasil Kunjungan', 'Status', 'Target Bayar', 'Lokasi GPS'];
+    const rows = [keys.join(',')];
+    marketingReports.forEach(r => {
+        const loc = r.lokasi ? `${r.lokasi.lat},${r.lokasi.lng}` : '';
+        const vals = [r.tanggal, r.ao, r.debitur, r.hasil, r.status, r.target, loc].map(v => {
+            const s = String(v ?? '').replace(/"/g, '""');
+            return s.includes(',') ? `"${s}"` : s;
+        });
+        rows.push(vals.join(','));
+    });
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'laporan_marketing_harian.csv'; a.click();
+    URL.revokeObjectURL(url);
+    addLog(`Export laporan marketing: ${marketingReports.length} baris.`, 'log-ok');
+}
+
+function exportMarketingPDF() {
+    if (!marketingReports.length) return alert('Belum ada laporan untuk diekspor!');
+    const win = window.open('', '_blank');
+    const rowsHtml = marketingReports.map(r => `
+        <tr>
+            <td>${r.tanggal}</td><td>${r.ao}</td><td>${r.debitur}</td>
+            <td>${r.hasil || ''}</td><td>${r.status}</td><td>${r.target || '-'}</td>
+        </tr>`).join('');
+    win.document.write(`
+        <html><head><title>Laporan Marketing Harian</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+            h1 { font-size: 18px; margin-bottom: 4px; }
+            p { color: #555; font-size: 12px; margin-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+            th { background: #eee; }
+        </style></head><body>
+        <h1>Laporan Marketing Harian — Kopena Limpung</h1>
+        <p>Dicetak: ${new Date().toLocaleString('id-ID')}</p>
+        <table>
+            <thead><tr><th>Tanggal</th><th>AO</th><th>Debitur</th><th>Hasil Kunjungan</th><th>Status</th><th>Target Bayar</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        </body></html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 400);
+}
 </script>
 </body>
 </html>
