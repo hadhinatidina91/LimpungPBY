@@ -868,7 +868,7 @@
                 <option value="LUNAS">LUNAS</option>
             </select>
         </div>
-        <div class="form-group"><label>Nama AO</label><input id="editAO2" type="text"></div>
+        <div class="form-group"><label>Nama AO</label><select id="editAO2"></select></div>
         <div class="form-group"><label>No HP / WhatsApp</label><input id="editHP" type="text" placeholder="Contoh: 08123456789"></div>
         <div class="form-group"><label>Alamat</label><input id="editAlamat" type="text" placeholder="Contoh: Jl. Merdeka No. 5, Limpung"></div>
         <div class="form-group"><label>Keterangan No Rekening</label><input id="editKetRek" type="text" placeholder="Contoh: Rekening Tabungan Simpanan"></div>
@@ -1104,6 +1104,12 @@ function goPage(p) {
 }
 
 // Edit modal
+function populateAOSelect(selectEl, currentValue) {
+    const aoSet = new Set(dataAll.map(x => x._ao).filter(Boolean));
+    if (currentValue) aoSet.add(currentValue);
+    selectEl.innerHTML = [...aoSet].sort().map(a => `<option value="${a}">${a}</option>`).join('');
+    if (currentValue) selectEl.value = currentValue;
+}
 function openModal(id) {
     const r = dataAll.find(x => x._id === id);
     if (!r) return;
@@ -1111,7 +1117,7 @@ function openModal(id) {
     document.getElementById('editNama').value = r._nama;
     document.getElementById('editOS').value = r._os;
     document.getElementById('editProg').value = r._progres;
-    document.getElementById('editAO2').value = r._ao;
+    populateAOSelect(document.getElementById('editAO2'), r._ao);
     document.getElementById('editHP').value = r._hp;
     document.getElementById('editAlamat').value = r._alamat;
     document.getElementById('editKetRek').value = r._ketrek;
