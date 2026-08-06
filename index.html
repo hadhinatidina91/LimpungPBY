@@ -803,6 +803,29 @@
     </div>
 </div>
 
+<div class="panel" id="adminAoPanel" style="display:none; margin-bottom:20px;">
+    <h3><span class="dot" style="background:var(--red)"></span> 🔐 Panel Admin — Ganti AO Nasabah</h3>
+    <div class="form-grid">
+        <div class="form-group" style="position:relative;">
+            <label>Cari Nasabah</label>
+            <input type="text" id="aoNasabahInput" placeholder="Ketik nama nasabah..." autocomplete="off">
+            <div class="autocomplete-list" id="aoAcList"></div>
+        </div>
+        <div class="form-group">
+            <label>AO Saat Ini</label>
+            <input type="text" id="aoCurrentAO" readonly style="opacity:.7">
+        </div>
+        <div class="form-group">
+            <label>AO Baru</label>
+            <select id="aoNewAO"><option value="">— Pilih AO baru —</option></select>
+        </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-cancel" onclick="resetGantiAO()">Reset</button>
+        <button class="btn btn-save" onclick="gantiAO()">💾 Simpan Perubahan AO</button>
+    </div>
+</div>
+
 <div class="table-panel">
     <div class="table-header">
         <h3>📋 Laporan Marketing Harian</h3>
@@ -1258,6 +1281,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const mDb = firebase.database().ref('laporanMarketing');
+const aoDb = firebase.database().ref('aoOverride');
 
 let marketingReports = [];
 let mLokasiCoord = null;
@@ -1269,6 +1293,7 @@ function toggleAdmin() {
         adminUnlocked = false;
         document.getElementById('mAdminStatus').textContent = 'Nonaktif — hapus laporan terkunci';
         document.getElementById('mAdminBtn').textContent = 'Masuk Admin';
+        document.getElementById('adminAoPanel').style.display = 'none';
         addLog('Mode admin dinonaktifkan.', '');
         refreshMarketing();
         return;
@@ -1283,8 +1308,110 @@ function toggleAdmin() {
     adminUnlocked = true;
     document.getElementById('mAdminStatus').textContent = 'Aktif — hapus laporan diizinkan';
     document.getElementById('mAdminBtn').textContent = 'Keluar Admin';
+    document.getElementById('adminAoPanel').style.display = '';
+    loadGantiAOSelect();
     addLog('Mode admin diaktifkan.', 'log-ok');
     refreshMarketing();
+}
+
+// =========================================================
+// PANEL ADMIN: GANTI AO NASABAH
+// =========================================================
+let aoSelectedId = null;
+
+function loadGantiAOSelect() {
+    const sel = document.getElementById('aoNewAO');
+    const cur = sel.value;
+    const aoSet = new Set(dataAll.map(x => x._ao).filter(Boolean));
+    sel.innerHTML = '<option value="">— Pilih AO baru —</option>' +
+        [...aoSet].sort().map(a => `<option value="${a}">${a}</option>`).join('');
+    if (cur) sel.value = cur;
+}
+
+const aoNasabahInputEl = document.getElementById('aoNasabahInput');
+aoNasabahInputEl.addEventListener('input', function () {
+    const q = this.value.trim().toLowerCase();
+    const list = document.getElementById('aoAcList');
+    aoSelectedId = null;
+    document.getElementById('aoCurrentAO').value = '';
+    if (q.length < 2) { list.classList.remove('show'); return; }
+    const matches = dataAll.filter(x => x._nama.toLowerCase().includes(q) && x._progres !== 'LUNAS').slice(0, 10);
+    if (!matches.length) { list.classList.remove('show'); return; }
+    list.innerHTML = matches.map(x => `
+        <div class="ac-item" onclick="pilihNasabahAO(${x._id})">
+            <div>
+                <div class="ac-name">${x._nama}</div>
+                <div class="ac-sub">${x._norek} · AO: ${x._ao}</div>
+            </div>
+        </div>
+    `).join('');
+    list.classList.add('show');
+});
+document.addEventListener('click', e => {
+    if (!e.target.closest('#aoNasabahInput') && !e.target.closest('#aoAcList')) {
+        document.getElementById('aoAcList').classList.remove('show');
+    }
+});
+
+function pilihNasabahAO(id) {
+    const r = dataAll.find(x => x._id === id);
+    if (!r) return;
+    aoSelectedId = id;
+    document.getElementById('aoNasabahInput').value = r._nama;
+    document.getElementById('aoCurrentAO').value = r._ao;
+    document.getElementById('aoAcList').classList.remove('show');
+}
+
+function resetGantiAO() {
+    aoSelectedId = null;
+    document.getElementById('aoNasabahInput').value = '';
+    document.getElementById('aoCurrentAO').value = '';
+    document.getElementById('aoNewAO').value = '';
+}
+
+function gantiAO() {
+    if (!adminUnlocked) {
+        alert('Hanya admin yang bisa mengganti AO nasabah. Aktifkan Mode Admin dulu.');
+        return;
+    }
+    const newAO = document.getElementById('aoNewAO').value;
+    if (!aoSelectedId) {
+        alert('Pilih nasabah dari daftar pencarian terlebih dahulu.');
+        return;
+    }
+    if (!newAO) {
+        alert('Pilih AO baru terlebih dahulu.');
+        return;
+    }
+    const r = dataAll.find(x => x._id === aoSelectedId);
+    if (!r) return;
+    const oldAO = r._ao;
+    if (oldAO === newAO) {
+        alert('AO baru sama dengan AO saat ini.');
+        return;
+    }
+    if (!confirm(`Pindahkan ${r._nama} dari AO "${oldAO}" ke "${newAO}"?`)) return;
+
+    aoDb.child(r._norek).set({
+        ao: newAO,
+        nama: r._nama,
+        norek: r._norek,
+        updatedAt: Date.now()
+    }).then(() => {
+        addLog(`AO nasabah <strong>${r._nama}</strong> diubah dari <strong>${oldAO}</strong> ke <strong>${newAO}</strong> (tersimpan ke Firebase).`, 'log-ok');
+    }).catch(err => {
+        addLog(`Gagal menyimpan perubahan AO ke Firebase: ${err.message}`, 'log-err');
+    });
+
+    // update tampilan lokal langsung, listener Firebase akan mengonfirmasi/menyamakan
+    r._ao = newAO;
+    r['Nama AO'] = newAO;
+
+    resetGantiAO();
+    loadAO();
+    loadMarketingAO();
+    loadGantiAOSelect();
+    refresh();
 }
 
 // Dengarkan perubahan data secara realtime dari Firebase
@@ -1294,6 +1421,29 @@ mDb.on('value', snapshot => {
     refreshMarketing();
 }, err => {
     addLog(`Gagal sinkronisasi Firebase: ${err.message}`, 'log-err');
+});
+
+// Dengarkan perubahan AO nasabah (override) secara realtime dari Firebase
+aoDb.on('value', snapshot => {
+    const val = snapshot.val() || {};
+    let changed = 0;
+    Object.entries(val).forEach(([norek, o]) => {
+        const r = dataAll.find(x => x._norek === norek);
+        if (r && o && o.ao && r._ao !== o.ao) {
+            r._ao = o.ao;
+            r['Nama AO'] = o.ao;
+            changed++;
+        }
+    });
+    if (changed) {
+        loadAO();
+        loadMarketingAO();
+        if (typeof loadGantiAOSelect === 'function') loadGantiAOSelect();
+        refresh();
+        refreshMarketing();
+    }
+}, err => {
+    addLog(`Gagal sinkronisasi AO: ${err.message}`, 'log-err');
 });
 
 (function initMarketingDate() {
