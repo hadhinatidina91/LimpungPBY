@@ -320,6 +320,17 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+        .btn-del {
+            background: var(--red-dim);
+            color: var(--red);
+            border: 1px solid var(--red);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-del:hover { opacity: 0.8; }
         .btn-edit:hover { border-color: var(--blue); color: var(--blue); }
 
         /* LOG */
@@ -876,6 +887,34 @@
         <div class="modal-footer">
             <button class="btn btn-cancel" onclick="closeModal()">Batal</button>
             <button class="btn btn-save" onclick="saveEdit()">Simpan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL EDIT LAPORAN -->
+<div class="modal" id="editLaporanModal">
+    <div class="modal-box">
+        <div class="modal-title">✏️ Edit Laporan Kunjungan</div>
+        <input type="hidden" id="elId">
+        <div class="form-group"><label>Tanggal</label><input type="date" id="elTanggal"></div>
+        <div class="form-group"><label>Nama AO</label><select id="elAO"></select></div>
+        <div class="form-group"><label>Nama Debitur</label><input type="text" id="elDebitur"></div>
+        <div class="form-group"><label>Hasil Kunjungan</label><input type="text" id="elHasil"></div>
+        <div class="form-group"><label>Status</label>
+            <select id="elStatus">
+                <option>Bertemu Debitur</option>
+                <option>Tidak Bertemu</option>
+                <option>Janji Bayar</option>
+                <option>Sudah Bayar</option>
+                <option>Pindah Alamat</option>
+                <option>Menolak</option>
+                <option>Lainnya</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Target Bayar</label><input type="text" id="elTarget"></div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeEditLaporanModal()">Batal</button>
+            <button class="btn btn-save" onclick="simpanEditLaporan()">Simpan Perubahan</button>
         </div>
     </div>
 </div>
@@ -1577,6 +1616,61 @@ function hapusLaporan(id) {
         .catch(err => addLog(`Gagal menghapus laporan: ${err.message}`, 'log-err'));
 }
 
+function editLaporan(id) {
+    if (!adminUnlocked) {
+        alert('Hanya admin yang bisa mengubah laporan. Aktifkan Mode Admin dulu (kode diperlukan).');
+        return;
+    }
+    const r = marketingReports.find(x => x._id === id);
+    if (!r) return;
+    document.getElementById('elId').value = id;
+    document.getElementById('elTanggal').value = r.tanggal || '';
+    const aoSel = document.getElementById('elAO');
+    const aoSet = new Set(dataAll.map(x => x._ao).filter(Boolean));
+    if (r.ao) aoSet.add(r.ao);
+    aoSel.innerHTML = [...aoSet].sort().map(a => `<option value="${a}">${a}</option>`).join('');
+    aoSel.value = r.ao || '';
+    document.getElementById('elDebitur').value = r.debitur || '';
+    document.getElementById('elHasil').value = r.hasil || '';
+    document.getElementById('elStatus').value = r.status || 'Bertemu Debitur';
+    document.getElementById('elTarget').value = r.target || '';
+    document.getElementById('editLaporanModal').classList.add('open');
+}
+
+function closeEditLaporanModal() {
+    document.getElementById('editLaporanModal').classList.remove('open');
+}
+
+function simpanEditLaporan() {
+    if (!adminUnlocked) {
+        alert('Hanya admin yang bisa mengubah laporan.');
+        return;
+    }
+    const id = document.getElementById('elId').value;
+    const tanggal = document.getElementById('elTanggal').value;
+    const ao = document.getElementById('elAO').value;
+    const debitur = document.getElementById('elDebitur').value.trim();
+    const hasil = document.getElementById('elHasil').value.trim();
+    const status = document.getElementById('elStatus').value;
+    const target = document.getElementById('elTarget').value;
+
+    if (!tanggal || !ao || !debitur || !status) {
+        alert('Mohon lengkapi Tanggal, Nama AO, Nama Debitur, dan Status.');
+        return;
+    }
+
+    firebase.database().ref('laporanMarketing/' + id).update({
+        tanggal, ao, debitur, hasil, status, target,
+        updatedAt: Date.now()
+    }).then(() => {
+        closeEditLaporanModal();
+        loadMarketingAO();
+        addLog(`Laporan kunjungan <strong>${debitur}</strong> diperbarui.`, 'log-ok');
+    }).catch(err => {
+        addLog(`Gagal menyimpan perubahan laporan: ${err.message}`, 'log-err');
+    });
+}
+
 function statusBadgeClass(s) {
     const map = {
         'Sudah Bayar': 'tetap',
@@ -1590,14 +1684,17 @@ function statusBadgeClass(s) {
     return map[s] || 'tanpa';
 }
 
-function refreshMarketing() {
+function getFilteredMarketing() {
     const fAO = document.getElementById('mFilterAO').value;
     const fStatus = document.getElementById('mFilterStatus').value;
     const fTgl = document.getElementById('mFilterTgl').value;
-
-    const filteredM = marketingReports.filter(r => {
+    return marketingReports.filter(r => {
         return (!fAO || r.ao === fAO) && (!fStatus || r.status === fStatus) && (!fTgl || r.tanggal === fTgl);
     }).sort((a, b) => b.tanggal.localeCompare(a.tanggal) || (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function refreshMarketing() {
+    const filteredM = getFilteredMarketing();
 
     const total = filteredM.length;
     const janji = filteredM.filter(r => r.status === 'Janji Bayar').length;
@@ -1633,8 +1730,8 @@ function refreshMarketing() {
             <td>${r.foto ? `<a href="${r.foto}" target="_blank" style="color:var(--blue);font-size:11px;">🖼️ Lihat</a>` : '<span style="color:#444">—</span>'}</td>
             <td>${r.lokasi ? `<a href="https://maps.google.com/?q=${r.lokasi.lat},${r.lokasi.lng}" target="_blank" style="color:var(--cyan);font-size:11px;">📍 Peta</a>` : '<span style="color:#444">—</span>'}</td>
             <td>${adminUnlocked
-                ? `<button class="btn-edit" onclick="hapusLaporan('${r._id}')">🗑️ Hapus</button>`
-                : `<button class="btn-edit" style="opacity:.6;cursor:not-allowed" onclick="toggleAdmin()" title="Aktifkan Mode Admin untuk menghapus">🔒 Terkunci</button>`}</td>
+                ? `<button class="btn-edit" onclick="editLaporan('${r._id}')">✏️ Edit</button> <button class="btn-del" onclick="hapusLaporan('${r._id}')">🗑️ Hapus</button>`
+                : `<button class="btn-edit" style="opacity:.6;cursor:not-allowed" onclick="toggleAdmin()" title="Aktifkan Mode Admin untuk mengubah/menghapus">🔒 Terkunci</button>`}</td>
         </tr>
     `).join('');
 }
@@ -1645,10 +1742,11 @@ function refreshMarketing() {
 });
 
 function exportMarketingCSV() {
-    if (!marketingReports.length) return alert('Belum ada laporan untuk diekspor!');
+    const data = getFilteredMarketing();
+    if (!data.length) return alert('Tidak ada laporan untuk diekspor pada filter saat ini!');
     const keys = ['Tanggal', 'AO', 'Debitur', 'Hasil Kunjungan', 'Status', 'Target Bayar', 'Lokasi GPS'];
     const rows = [keys.join(',')];
-    marketingReports.forEach(r => {
+    data.forEach(r => {
         const loc = r.lokasi ? `${r.lokasi.lat},${r.lokasi.lng}` : '';
         const vals = [r.tanggal, r.ao, r.debitur, r.hasil, r.status, r.target, loc].map(v => {
             const s = String(v ?? '').replace(/"/g, '""');
@@ -1659,31 +1757,43 @@ function exportMarketingCSV() {
     const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'laporan_marketing_harian.csv'; a.click();
+    const fTgl = document.getElementById('mFilterTgl').value;
+    a.href = url; a.download = `laporan_marketing_harian${fTgl ? '_' + fTgl : ''}.csv`; a.click();
     URL.revokeObjectURL(url);
-    addLog(`Export laporan marketing: ${marketingReports.length} baris.`, 'log-ok');
+    addLog(`Export laporan marketing: ${data.length} baris${fTgl ? ' (tanggal ' + fTgl + ')' : ' (semua tanggal)'}.`, 'log-ok');
 }
 
 function exportMarketingPDF() {
-    if (!marketingReports.length) return alert('Belum ada laporan untuk diekspor!');
+    const data = getFilteredMarketing();
+    if (!data.length) return alert('Tidak ada laporan untuk dicetak pada filter saat ini!');
+    const fTgl = document.getElementById('mFilterTgl').value;
+    const fAO = document.getElementById('mFilterAO').value;
+    const fStatus = document.getElementById('mFilterStatus').value;
+    const filterInfo = [
+        fTgl ? `Tanggal: ${fTgl}` : 'Tanggal: Semua',
+        fAO ? `AO: ${fAO}` : 'AO: Semua',
+        fStatus ? `Status: ${fStatus}` : 'Status: Semua'
+    ].join(' &nbsp;|&nbsp; ');
     const win = window.open('', '_blank');
-    const rowsHtml = marketingReports.map(r => `
+    const rowsHtml = data.map(r => `
         <tr>
             <td>${r.tanggal}</td><td>${r.ao}</td><td>${r.debitur}</td>
             <td>${r.hasil || ''}</td><td>${r.status}</td><td>${r.target || '-'}</td>
         </tr>`).join('');
     win.document.write(`
-        <html><head><title>Laporan Marketing Harian</title>
+        <html><head><title>Laporan Marketing Harian${fTgl ? ' - ' + fTgl : ''}</title>
         <style>
             body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
             h1 { font-size: 18px; margin-bottom: 4px; }
-            p { color: #555; font-size: 12px; margin-bottom: 16px; }
+            p { color: #555; font-size: 12px; margin-bottom: 4px; }
+            .filterinfo { color: #333; font-size: 12px; margin-bottom: 16px; font-weight: bold; }
             table { width: 100%; border-collapse: collapse; font-size: 11px; }
             th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
             th { background: #eee; }
         </style></head><body>
         <h1>Laporan Marketing Harian — Kopena Limpung</h1>
         <p>Dicetak: ${new Date().toLocaleString('id-ID')}</p>
+        <p class="filterinfo">${filterInfo} &nbsp;|&nbsp; Total: ${data.length} laporan</p>
         <table>
             <thead><tr><th>Tanggal</th><th>AO</th><th>Debitur</th><th>Hasil Kunjungan</th><th>Status</th><th>Target Bayar</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
