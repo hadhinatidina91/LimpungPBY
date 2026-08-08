@@ -88,6 +88,8 @@
             transition: border-color 0.2s;
         }
         .kpi:hover { border-color: var(--blue); }
+        .kpi-clickable { cursor: pointer; }
+        .kpi-clickable:hover { border-color: var(--amber); transform: translateY(-2px); }
         .kpi::after {
             content: '';
             position: absolute;
@@ -605,15 +607,25 @@
         <div class="kpi-value" id="kTetap">—</div>
         <div class="kpi-sub" id="kTetapPct">—</div>
     </div>
-    <div class="kpi k-amber">
-        <div class="kpi-label">Status BERUBAH</div>
+    <div class="kpi k-amber kpi-clickable" id="kpiKunjunganCard" onclick="openKunjunganList()" title="Klik untuk lihat daftar nasabah yang sudah dikunjungi">
+        <div class="kpi-label">Sudah Dikunjungi</div>
         <div class="kpi-value" id="kBerubah">—</div>
         <div class="kpi-sub" id="kBerubahPct">—</div>
+    </div>
+    <div class="kpi k-green kpi-clickable" id="kpiSudahBayarCard" onclick="openSudahBayarList()" title="Klik untuk lihat daftar nasabah yang sudah angsuran/bayar">
+        <div class="kpi-label">💰 Sudah Angsuran</div>
+        <div class="kpi-value" id="kSudahBayar" style="color:var(--green)">—</div>
+        <div class="kpi-sub" id="kSudahBayarPct">status kunjungan: Sudah Bayar</div>
     </div>
     <div class="kpi k-red">
         <div class="kpi-label">Total Plafond</div>
         <div class="kpi-value" id="kPlafond">—</div>
         <div class="kpi-sub">seluruh plafond disetujui</div>
+    </div>
+    <div class="kpi k-red" id="kpiPrioritasCard" style="border-color:var(--red)">
+        <div class="kpi-label">🔴 Prioritas Belum Dikunjungi</div>
+        <div class="kpi-value" id="kPrioritas" style="color:var(--red)">—</div>
+        <div class="kpi-sub">Coll tinggi (3-4) & belum ada laporan</div>
     </div>
 </div>
 
@@ -669,6 +681,7 @@
                     <th>AO</th>
                     <th>Alamat</th>
                     <th>Ket. Rekening</th>
+                    <th>Kunjungan</th>
                     <th>WA</th>
                     <th></th>
                 </tr>
@@ -716,7 +729,8 @@
         </div>
         <div class="form-group" style="position:relative;">
             <label>Nama Debitur</label>
-            <input type="text" id="mDebitur" placeholder="Ketik nama debitur..." autocomplete="off">
+            <input type="text" id="mDebitur" placeholder="Ketik nama debitur (wajib pilih dari daftar)..." autocomplete="off">
+            <input type="hidden" id="mDebiturNorek">
             <div class="autocomplete-list" id="mAcList"></div>
         </div>
         <div class="form-group">
@@ -758,22 +772,22 @@
 </div>
 
 <div class="kpi-grid">
-    <div class="kpi k-blue">
+    <div class="kpi k-blue kpi-clickable" onclick="openMarketingStatusList(null, 'Total Kunjungan')" title="Klik untuk lihat daftar nama">
         <div class="kpi-label">Total Kunjungan</div>
         <div class="kpi-value" id="mKTotal">0</div>
         <div class="kpi-sub">hasil filter aktif</div>
     </div>
-    <div class="kpi k-amber">
+    <div class="kpi k-amber kpi-clickable" onclick="openMarketingStatusList('Janji Bayar', 'Janji Bayar')" title="Klik untuk lihat daftar nama">
         <div class="kpi-label">Janji Bayar</div>
         <div class="kpi-value" id="mKJanji">0</div>
         <div class="kpi-sub">menunggu realisasi</div>
     </div>
-    <div class="kpi k-green">
+    <div class="kpi k-green kpi-clickable" onclick="openMarketingStatusList('Sudah Bayar', 'Berhasil Ditagih')" title="Klik untuk lihat daftar nama">
         <div class="kpi-label">Berhasil Ditagih</div>
         <div class="kpi-value" id="mKBerhasil">0</div>
         <div class="kpi-sub">status sudah bayar</div>
     </div>
-    <div class="kpi k-red">
+    <div class="kpi k-red kpi-clickable" onclick="openMarketingStatusList('Tidak Bertemu', 'Tidak Bertemu')" title="Klik untuk lihat daftar nama">
         <div class="kpi-label">Tidak Bertemu</div>
         <div class="kpi-value" id="mKTidakBertemu">0</div>
         <div class="kpi-sub">perlu kunjungan ulang</div>
@@ -898,7 +912,12 @@
         <input type="hidden" id="elId">
         <div class="form-group"><label>Tanggal</label><input type="date" id="elTanggal"></div>
         <div class="form-group"><label>Nama AO</label><select id="elAO"></select></div>
-        <div class="form-group"><label>Nama Debitur</label><input type="text" id="elDebitur"></div>
+        <div class="form-group" style="position:relative;">
+            <label>Nama Debitur</label>
+            <input type="text" id="elDebitur" placeholder="Ketik nama debitur (wajib pilih dari daftar)..." autocomplete="off">
+            <input type="hidden" id="elDebiturNorek">
+            <div class="autocomplete-list" id="elAcList"></div>
+        </div>
         <div class="form-group"><label>Hasil Kunjungan</label><input type="text" id="elHasil"></div>
         <div class="form-group"><label>Status</label>
             <select id="elStatus">
@@ -915,6 +934,20 @@
         <div class="modal-footer">
             <button class="btn btn-cancel" onclick="closeEditLaporanModal()">Batal</button>
             <button class="btn btn-save" onclick="simpanEditLaporan()">Simpan Perubahan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DAFTAR & RIWAYAT KUNJUNGAN -->
+<div class="modal" id="kunjunganModal">
+    <div class="modal-box" style="max-width:480px;max-height:80vh;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <button class="btn-edit" id="kjBackBtn" style="display:none" onclick="kjBack()">← Kembali</button>
+            <div class="modal-title" id="kjTitle" style="margin-bottom:0;flex:1">Nasabah Sudah Dikunjungi</div>
+        </div>
+        <div id="kjBody" style="overflow-y:auto;flex:1"></div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeKunjunganModal()">Tutup</button>
         </div>
     </div>
 </div>
@@ -1012,21 +1045,26 @@ function refresh() {
     filtered.sort((a,b) => b._os - a._os);
 
     // KPIs
-    let totalOS = 0, totalPlafond = 0, nTetap = 0, nBerubah = 0;
+    let totalOS = 0, totalPlafond = 0, nTetap = 0, nDikunjungi = 0;
     filtered.forEach(x => {
         totalOS += x._os;
         totalPlafond += x._plafond;
         if (x._progres === 'TETAP') nTetap++;
-        else if (x._progres === 'BERUBAH') nBerubah++;
+        if (x._kunjungan) nDikunjungi++;
     });
     document.getElementById('kAnggota').textContent = filtered.length.toLocaleString('id-ID');
     document.getElementById('kOutstanding').textContent = fRp(totalOS);
     document.getElementById('kTetap').textContent = nTetap;
-    document.getElementById('kBerubah').textContent = nBerubah;
+    document.getElementById('kBerubah').textContent = nDikunjungi;
     document.getElementById('kPlafond').textContent = fRp(totalPlafond);
     const pct = filtered.length > 0;
+    const nSudahBayar = filtered.filter(x => x._kunjungan && x._kunjungan.status === 'Sudah Bayar').length;
+    document.getElementById('kSudahBayar').textContent = nSudahBayar;
+    document.getElementById('kSudahBayarPct').textContent = pct ? ((nSudahBayar/filtered.length)*100).toFixed(1)+'% dari total · klik untuk lihat' : '—';
+    const nPrioritas = filtered.filter(x => parseInt(x._apr) >= 3 && !x._kunjungan).length;
+    document.getElementById('kPrioritas').textContent = nPrioritas;
     document.getElementById('kTetapPct').textContent = pct ? ((nTetap/filtered.length)*100).toFixed(1)+'% dari total' : '—';
-    document.getElementById('kBerubahPct').textContent = pct ? ((nBerubah/filtered.length)*100).toFixed(1)+'% dari total' : '—';
+    document.getElementById('kBerubahPct').textContent = pct ? ((nDikunjungi/filtered.length)*100).toFixed(1)+'% dari total · klik untuk lihat' : '—';
 
     // Chart AO
     const aoMap = {};
@@ -1109,6 +1147,7 @@ function renderTable() {
             <td style="font-size:12px">${r._ao}</td>
             <td style="font-size:12px;color:var(--muted);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r._alamat||''}">${r._alamat || '<span style="color:#444">—</span>'}</td>
             <td style="font-size:12px;color:var(--muted);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r._ketrek||''}">${r._ketrek || '<span style="color:#444">—</span>'}</td>
+            <td style="font-size:11px">${kunjunganCell(r._kunjungan, r)}</td>
             <td>${waBtn}</td>
             <td><button class="btn-edit" onclick="openModal(${r._id})">Edit</button></td>
         </tr>`;
@@ -1464,10 +1503,199 @@ function gantiAO() {
 mDb.on('value', snapshot => {
     const val = snapshot.val() || {};
     marketingReports = Object.entries(val).map(([key, r]) => ({ ...r, _id: key }));
+    applyKunjunganToDataAll();
     refreshMarketing();
+    refresh();
 }, err => {
     addLog(`Gagal sinkronisasi Firebase: ${err.message}`, 'log-err');
 });
+
+function todayStr() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function normNama(s) {
+    return String(s || '').trim().toUpperCase();
+}
+
+function applyKunjunganToDataAll() {
+    const mapByNorek = {};
+    const mapByNama = {}; // fallback untuk laporan lama yang belum punya norek
+    marketingReports.forEach(r => {
+        const isNewer = (a, b) => !b || r.tanggal > b.tanggal || (r.tanggal === b.tanggal && (r.createdAt || 0) > (b.createdAt || 0));
+        if (r.norek) {
+            if (isNewer(r, mapByNorek[r.norek])) mapByNorek[r.norek] = r;
+        } else {
+            const key = normNama(r.debitur);
+            if (key && isNewer(r, mapByNama[key])) mapByNama[key] = r;
+        }
+    });
+    dataAll.forEach(x => {
+        x._kunjungan = mapByNorek[x._norek] || mapByNama[normNama(x._nama)] || null;
+    });
+}
+
+function kunjunganCell(k, x) {
+    const collTinggi = x && parseInt(x._apr) >= 3;
+    if (!k) {
+        if (collTinggi) {
+            return '<div style="line-height:1.5"><span style="color:var(--red);font-weight:700">🔴 Prioritas — Belum Dikunjungi</span><br><span style="font-size:10px;color:var(--muted)">Coll tinggi, perlu segera ditindaklanjuti</span></div>';
+        }
+        return '<span style="color:#444">Belum dikunjungi</span>';
+    }
+    const isToday = k.tanggal === todayStr();
+    const color = statusColor(k.status);
+    const flag = collTinggi ? '<span title="Coll tinggi, sudah ditindaklanjuti">🟢 </span>' : '';
+    return `<div style="line-height:1.5">${flag}<span style="color:${color};font-weight:600">${k.status}</span><br>
+        <span class="mono" style="color:var(--muted);font-size:10px">${k.tanggal}${isToday ? ' · Hari ini' : ''} · ${k.ao || ''}</span></div>`;
+}
+
+function statusColor(status) {
+    return (status === 'Sudah Bayar') ? 'var(--green)'
+        : (status === 'Tidak Bertemu' || status === 'Menolak') ? 'var(--red)'
+        : 'var(--amber)';
+}
+
+// ===================== MODAL DAFTAR & RIWAYAT KUNJUNGAN =====================
+let kjRows = [];
+let kjTitleLabel = 'Sudah Dikunjungi';
+
+function reportKey(r) {
+    return r.norek || ('nama:' + normNama(r.debitur));
+}
+
+function getReportsFor(x) {
+    return marketingReports
+        .filter(r => (r.norek ? r.norek === x._norek : normNama(r.debitur) === normNama(x._nama)))
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal) || (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function openKunjunganList() {
+    const visited = filtered.filter(x => x._kunjungan);
+    kjRows = visited.map(x => {
+        const reports = getReportsFor(x);
+        return { key: x._norek, nama: x._nama, norek: x._norek, ao: x._ao, count: reports.length, reports };
+    }).sort((a, b) => b.count - a.count || a.nama.localeCompare(b.nama));
+    kjTitleLabel = 'Sudah Dikunjungi';
+    renderKunjunganList();
+    document.getElementById('kunjunganModal').classList.add('open');
+}
+
+function openSudahBayarList() {
+    const paid = filtered.filter(x => x._kunjungan && x._kunjungan.status === 'Sudah Bayar');
+    kjRows = paid.map(x => {
+        const reports = getReportsFor(x);
+        return { key: x._norek, nama: x._nama, norek: x._norek, ao: x._ao, count: reports.length, reports };
+    }).sort((a, b) => b.count - a.count || a.nama.localeCompare(b.nama));
+    kjTitleLabel = '💰 Sudah Angsuran';
+    renderKunjunganList();
+    document.getElementById('kunjunganModal').classList.add('open');
+}
+
+// Dipakai oleh KPI tab Kinerja Marketing: Total Kunjungan / Janji Bayar / Sudah Bayar / Tidak Bertemu
+function openMarketingStatusList(statusFilter, titleLabel) {
+    let subset = getFilteredMarketing();
+    if (statusFilter) subset = subset.filter(r => r.status === statusFilter);
+
+    const groups = {};
+    subset.forEach(r => {
+        const key = reportKey(r);
+        if (!groups[key]) groups[key] = { key, norek: r.norek || null, nama: r.debitur, ao: r.ao, count: 0, latest: null };
+        groups[key].count++;
+        if (!groups[key].latest || r.tanggal > groups[key].latest.tanggal || (r.tanggal === groups[key].latest.tanggal && (r.createdAt || 0) > (groups[key].latest.createdAt || 0))) {
+            groups[key].latest = r;
+        }
+    });
+
+    kjRows = Object.values(groups).map(g => {
+        const rec = g.norek ? dataAll.find(x => x._norek === g.norek) : dataAll.find(x => normNama(x._nama) === normNama(g.nama));
+        const reports = marketingReports.filter(r => reportKey(r) === g.key)
+            .sort((a, b) => b.tanggal.localeCompare(a.tanggal) || (b.createdAt || 0) - (a.createdAt || 0));
+        return {
+            key: g.key,
+            nama: g.nama,
+            norek: rec ? rec._norek : (g.norek || '—'),
+            ao: rec ? rec._ao : (g.ao || '—'),
+            count: g.count,
+            reports,
+            janjiTanggal: (statusFilter === 'Janji Bayar' && g.latest) ? g.latest.target : null
+        };
+    }).sort((a, b) => {
+        if (statusFilter === 'Janji Bayar') {
+            const ta = a.janjiTanggal || '9999', tb = b.janjiTanggal || '9999';
+            if (ta !== tb) return ta.localeCompare(tb); // yang paling dekat jatuh tempo di atas
+        }
+        return b.count - a.count || a.nama.localeCompare(b.nama);
+    });
+
+    kjTitleLabel = titleLabel;
+    renderKunjunganList();
+    document.getElementById('kunjunganModal').classList.add('open');
+}
+
+function renderKunjunganList() {
+    document.getElementById('kjTitle').textContent = `${kjTitleLabel} (${kjRows.length})`;
+    document.getElementById('kjBackBtn').style.display = 'none';
+    document.getElementById('kjBody').innerHTML = kjRows.length ? kjRows.map(r => {
+        let reminder = '';
+        if (r.janjiTanggal) {
+            const due = r.janjiTanggal <= todayStr();
+            reminder = `<div style="font-size:11px;margin-top:4px;color:${due ? 'var(--red)' : 'var(--amber)'};font-weight:700">
+                ${due ? '🔴 Jatuh tempo: ' : '🟡 Janji bayar: '}${r.janjiTanggal}${due ? ' — segera tindak lanjut!' : ''}
+            </div>`;
+        }
+        return `
+        <div class="ac-item" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:2px" onclick="showKunjunganHistory('${String(r.key).replace(/'/g, "\\'")}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+                <div>
+                    <div class="ac-name">${r.nama}</div>
+                    <div class="ac-sub">${r.norek} · AO: ${r.ao}</div>
+                </div>
+                <div class="rank-val">${r.count}x</div>
+            </div>
+            ${reminder}
+        </div>`;
+    }).join('') : '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Tidak ada data pada filter ini.</div>';
+}
+
+function showKunjunganHistory(key) {
+    const row = kjRows.find(r => String(r.key) === key);
+    if (!row) return;
+    document.getElementById('kjTitle').textContent = `Riwayat — ${row.nama}`;
+    document.getElementById('kjBackBtn').style.display = '';
+    document.getElementById('kjBody').innerHTML = row.reports.length ? row.reports.map(r => {
+        const foto = r.foto ? `<img src="${r.foto}" loading="lazy" style="width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:8px;cursor:pointer;border:1px solid var(--border)" onclick="window.open(this.src,'_blank')">` : '';
+        const lokasi = (r.lokasi && r.lokasi.lat) ? `<a href="https://www.google.com/maps?q=${r.lokasi.lat},${r.lokasi.lng}" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none">📍 Lihat lokasi kunjungan</a>` : '';
+        let targetLine = '';
+        if (r.target) {
+            const due = r.target <= todayStr();
+            const label = r.status === 'Janji Bayar' ? (due ? '🔴 Jatuh tempo' : '🟡 Janji bayar') : 'Target';
+            targetLine = `<div style="font-size:11px;margin-top:2px;color:${r.status === 'Janji Bayar' ? (due ? 'var(--red)' : 'var(--amber)') : 'var(--muted)'};font-weight:${r.status === 'Janji Bayar' ? 700 : 400}">${label}: ${r.target}</div>`;
+        }
+        return `
+        <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                <span class="mono" style="font-size:11px;color:var(--muted)">${r.tanggal}</span>
+                <span style="font-size:12px;font-weight:700;color:${statusColor(r.status)}">${r.status}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text);margin-top:4px">${r.hasil || '<span style="color:var(--muted)">Tidak ada catatan</span>'}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">AO: ${r.ao || '—'}</div>
+            ${targetLine}
+            ${lokasi ? `<div style="margin-top:4px">${lokasi}</div>` : ''}
+            ${foto}
+        </div>`;
+    }).join('') : '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Tidak ada riwayat.</div>';
+}
+
+function kjBack() {
+    renderKunjunganList();
+}
+
+function closeKunjunganModal() {
+    document.getElementById('kunjunganModal').classList.remove('open');
+}
 
 // Dengarkan perubahan AO nasabah (override) secara realtime dari Firebase
 aoDb.on('value', snapshot => {
@@ -1512,13 +1740,14 @@ function loadMarketingAO() {
 // Autocomplete nama debitur dari data anggota
 const mDebiturInput = document.getElementById('mDebitur');
 mDebiturInput.addEventListener('input', function () {
+    document.getElementById('mDebiturNorek').value = ''; // reset: ketikan bebas belum tentu valid
     const q = this.value.trim().toLowerCase();
     const list = document.getElementById('mAcList');
     if (q.length < 2) { list.classList.remove('show'); return; }
-    const matches = dataAll.filter(x => x._nama.toLowerCase().includes(q)).slice(0, 10);
+    const matches = dataAll.filter(x => x._nama.toLowerCase().includes(q) && x._progres !== 'LUNAS').slice(0, 10);
     if (!matches.length) { list.classList.remove('show'); return; }
     list.innerHTML = matches.map(x => `
-        <div class="ac-item" onclick="pilihDebitur('${x._nama.replace(/'/g, "\\'")}','${x._ao.replace(/'/g, "\\'")}')">
+        <div class="ac-item" onclick="pilihDebitur('${x._nama.replace(/'/g, "\\'")}','${x._ao.replace(/'/g, "\\'")}','${x._norek}')">
             <div>
                 <div class="ac-name">${x._nama}</div>
                 <div class="ac-sub">${x._norek} · AO: ${x._ao}</div>
@@ -1532,8 +1761,9 @@ document.addEventListener('click', function (e) {
         document.getElementById('mAcList').classList.remove('show');
     }
 });
-function pilihDebitur(nama, ao) {
+function pilihDebitur(nama, ao, norek) {
     document.getElementById('mDebitur').value = nama;
+    document.getElementById('mDebiturNorek').value = norek;
     if (ao) document.getElementById('mAO').value = ao;
     document.getElementById('mAcList').classList.remove('show');
 }
@@ -1557,6 +1787,7 @@ function simpanLaporan() {
     const tgl = document.getElementById('mTanggal').value;
     const ao = document.getElementById('mAO').value;
     const debitur = document.getElementById('mDebitur').value.trim();
+    const norek = document.getElementById('mDebiturNorek').value;
     const hasil = document.getElementById('mHasil').value.trim();
     const status = document.getElementById('mStatus').value;
     const target = document.getElementById('mTarget').value;
@@ -1566,10 +1797,24 @@ function simpanLaporan() {
         alert('Mohon lengkapi Tanggal, Nama AO, Nama Debitur, dan Status Hasil Kunjungan.');
         return;
     }
+    if (!norek) {
+        alert('Nama debitur harus dipilih dari daftar nasabah (klik salah satu saran yang muncul), bukan diketik bebas — supaya laporan tercatat akurat.');
+        return;
+    }
+
+    const existingToday = marketingReports.find(r => r.norek === norek && r.tanggal === tgl);
+    if (existingToday) {
+        const lanjut = confirm(
+            `⚠️ Nasabah "${debitur}" sudah dilaporkan pada tanggal ${tgl}\n` +
+            `(Status sebelumnya: ${existingToday.status}${existingToday.ao ? ' oleh ' + existingToday.ao : ''}).\n\n` +
+            `Tetap simpan laporan baru ini juga?`
+        );
+        if (!lanjut) return;
+    }
 
     const finalize = (fotoData) => {
         mDb.push({
-            tanggal: tgl, ao, debitur, hasil, status, target,
+            tanggal: tgl, ao, debitur, norek, hasil, status, target,
             foto: fotoData || null,
             lokasi: mLokasiCoord,
             createdAt: Date.now()
@@ -1597,6 +1842,7 @@ function simpanLaporan() {
 
 function resetFormMarketing() {
     document.getElementById('mDebitur').value = '';
+    document.getElementById('mDebiturNorek').value = '';
     document.getElementById('mHasil').value = '';
     document.getElementById('mStatus').value = 'Bertemu Debitur';
     document.getElementById('mTarget').value = '';
@@ -1631,10 +1877,41 @@ function editLaporan(id) {
     aoSel.innerHTML = [...aoSet].sort().map(a => `<option value="${a}">${a}</option>`).join('');
     aoSel.value = r.ao || '';
     document.getElementById('elDebitur').value = r.debitur || '';
+    document.getElementById('elDebiturNorek').value = r.norek || '';
     document.getElementById('elHasil').value = r.hasil || '';
     document.getElementById('elStatus').value = r.status || 'Bertemu Debitur';
     document.getElementById('elTarget').value = r.target || '';
     document.getElementById('editLaporanModal').classList.add('open');
+}
+
+const elDebiturInput = document.getElementById('elDebitur');
+elDebiturInput.addEventListener('input', function () {
+    document.getElementById('elDebiturNorek').value = '';
+    const q = this.value.trim().toLowerCase();
+    const list = document.getElementById('elAcList');
+    if (q.length < 2) { list.classList.remove('show'); return; }
+    const matches = dataAll.filter(x => x._nama.toLowerCase().includes(q) && x._progres !== 'LUNAS').slice(0, 10);
+    if (!matches.length) { list.classList.remove('show'); return; }
+    list.innerHTML = matches.map(x => `
+        <div class="ac-item" onclick="pilihDebiturEdit('${x._nama.replace(/'/g, "\\'")}','${x._ao.replace(/'/g, "\\'")}','${x._norek}')">
+            <div>
+                <div class="ac-name">${x._nama}</div>
+                <div class="ac-sub">${x._norek} · AO: ${x._ao}</div>
+            </div>
+        </div>
+    `).join('');
+    list.classList.add('show');
+});
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('#elDebitur') && !e.target.closest('#elAcList')) {
+        document.getElementById('elAcList').classList.remove('show');
+    }
+});
+function pilihDebiturEdit(nama, ao, norek) {
+    document.getElementById('elDebitur').value = nama;
+    document.getElementById('elDebiturNorek').value = norek;
+    document.getElementById('elAO').value = ao;
+    document.getElementById('elAcList').classList.remove('show');
 }
 
 function closeEditLaporanModal() {
@@ -1650,6 +1927,7 @@ function simpanEditLaporan() {
     const tanggal = document.getElementById('elTanggal').value;
     const ao = document.getElementById('elAO').value;
     const debitur = document.getElementById('elDebitur').value.trim();
+    const norek = document.getElementById('elDebiturNorek').value;
     const hasil = document.getElementById('elHasil').value.trim();
     const status = document.getElementById('elStatus').value;
     const target = document.getElementById('elTarget').value;
@@ -1658,9 +1936,13 @@ function simpanEditLaporan() {
         alert('Mohon lengkapi Tanggal, Nama AO, Nama Debitur, dan Status.');
         return;
     }
+    if (!norek) {
+        alert('Nama debitur harus dipilih dari daftar nasabah (klik salah satu saran yang muncul), bukan diketik bebas — supaya laporan tercatat akurat.');
+        return;
+    }
 
     firebase.database().ref('laporanMarketing/' + id).update({
-        tanggal, ao, debitur, hasil, status, target,
+        tanggal, ao, debitur, norek, hasil, status, target,
         updatedAt: Date.now()
     }).then(() => {
         closeEditLaporanModal();
