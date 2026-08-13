@@ -813,7 +813,20 @@
                 <option>Menolak</option>
                 <option>Lainnya</option>
             </select>
-            <input type="date" id="mFilterTgl">
+            <div>
+                <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Rentang Tanggal</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="date" id="mFilterTglDari" style="flex:1;min-width:0;" title="Dari tanggal">
+                    <span style="color:var(--muted);font-size:12px;">s/d</span>
+                    <input type="date" id="mFilterTglSampai" style="flex:1;min-width:0;" title="Sampai tanggal">
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-export" style="flex:1;padding:7px 10px;font-size:12px;" onclick="setMarketingDateRange(0)">Hari Ini</button>
+                <button class="btn btn-export" style="flex:1;padding:7px 10px;font-size:12px;" onclick="setMarketingDateRange(7)">7 Hari</button>
+                <button class="btn btn-export" style="flex:1;padding:7px 10px;font-size:12px;" onclick="setMarketingDateRange(30)">30 Hari</button>
+                <button class="btn btn-export" style="flex:1;padding:7px 10px;font-size:12px;" onclick="resetMarketingDateRange()">Reset</button>
+            </div>
             <div style="display:flex;gap:8px;">
                 <button class="btn btn-export" style="flex:1;" onclick="exportMarketingCSV()">⬇ Excel (CSV)</button>
                 <button class="btn btn-export" style="flex:1;" onclick="exportMarketingPDF()">🖨️ PDF</button>
@@ -1969,10 +1982,35 @@ function statusBadgeClass(s) {
 function getFilteredMarketing() {
     const fAO = document.getElementById('mFilterAO').value;
     const fStatus = document.getElementById('mFilterStatus').value;
-    const fTgl = document.getElementById('mFilterTgl').value;
+    const fDari = document.getElementById('mFilterTglDari').value;
+    const fSampai = document.getElementById('mFilterTglSampai').value;
     return marketingReports.filter(r => {
-        return (!fAO || r.ao === fAO) && (!fStatus || r.status === fStatus) && (!fTgl || r.tanggal === fTgl);
+        return (!fAO || r.ao === fAO) && (!fStatus || r.status === fStatus)
+            && (!fDari || r.tanggal >= fDari) && (!fSampai || r.tanggal <= fSampai);
     }).sort((a, b) => b.tanggal.localeCompare(a.tanggal) || (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function fmtDateID(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+}
+
+function setMarketingDateRange(daysBack) {
+    const today = new Date();
+    const sampai = today.toISOString().slice(0, 10);
+    const dariDate = new Date(today);
+    dariDate.setDate(dariDate.getDate() - daysBack);
+    const dari = dariDate.toISOString().slice(0, 10);
+    document.getElementById('mFilterTglDari').value = dari;
+    document.getElementById('mFilterTglSampai').value = sampai;
+    refreshMarketing();
+}
+
+function resetMarketingDateRange() {
+    document.getElementById('mFilterTglDari').value = '';
+    document.getElementById('mFilterTglSampai').value = '';
+    refreshMarketing();
 }
 
 function refreshMarketing() {
@@ -2018,7 +2056,7 @@ function refreshMarketing() {
     `).join('');
 }
 
-['mFilterAO', 'mFilterStatus', 'mFilterTgl'].forEach(id => {
+['mFilterAO', 'mFilterStatus', 'mFilterTglDari', 'mFilterTglSampai'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('change', refreshMarketing);
 });
@@ -2039,20 +2077,25 @@ function exportMarketingCSV() {
     const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const fTgl = document.getElementById('mFilterTgl').value;
-    a.href = url; a.download = `laporan_marketing_harian${fTgl ? '_' + fTgl : ''}.csv`; a.click();
+    const fDari = document.getElementById('mFilterTglDari').value;
+    const fSampai = document.getElementById('mFilterTglSampai').value;
+    const rangeSuffix = (fDari || fSampai) ? `_${fDari || 'awal'}_sd_${fSampai || 'akhir'}` : '';
+    const rangeLog = (fDari || fSampai) ? ` (tanggal ${fDari || '...'} s/d ${fSampai || '...'})` : ' (semua tanggal)';
+    a.href = url; a.download = `laporan_marketing_harian${rangeSuffix}.csv`; a.click();
     URL.revokeObjectURL(url);
-    addLog(`Export laporan marketing: ${data.length} baris${fTgl ? ' (tanggal ' + fTgl + ')' : ' (semua tanggal)'}.`, 'log-ok');
+    addLog(`Export laporan marketing: ${data.length} baris${rangeLog}.`, 'log-ok');
 }
 
 function exportMarketingPDF() {
     const data = getFilteredMarketing();
     if (!data.length) return alert('Tidak ada laporan untuk dicetak pada filter saat ini!');
-    const fTgl = document.getElementById('mFilterTgl').value;
+    const fDari = document.getElementById('mFilterTglDari').value;
+    const fSampai = document.getElementById('mFilterTglSampai').value;
     const fAO = document.getElementById('mFilterAO').value;
     const fStatus = document.getElementById('mFilterStatus').value;
+    const rangeLabel = (fDari || fSampai) ? `${fDari || '...'} s/d ${fSampai || '...'}` : 'Semua';
     const filterInfo = [
-        fTgl ? `Tanggal: ${fTgl}` : 'Tanggal: Semua',
+        `Tanggal: ${rangeLabel}`,
         fAO ? `AO: ${fAO}` : 'AO: Semua',
         fStatus ? `Status: ${fStatus}` : 'Status: Semua'
     ].join(' &nbsp;|&nbsp; ');
@@ -2063,7 +2106,7 @@ function exportMarketingPDF() {
             <td>${r.hasil || ''}</td><td>${r.status}</td><td>${r.target || '-'}</td>
         </tr>`).join('');
     win.document.write(`
-        <html><head><title>Laporan Marketing Harian${fTgl ? ' - ' + fTgl : ''}</title>
+        <html><head><title>Laporan Marketing Harian${(fDari || fSampai) ? ' - ' + rangeLabel : ''}</title>
         <style>
             body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
             h1 { font-size: 18px; margin-bottom: 4px; }
