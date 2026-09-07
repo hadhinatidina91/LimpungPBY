@@ -461,6 +461,24 @@
         }
         .form-grid .form-group input:focus,
         .form-grid .form-group select:focus { border-color: var(--blue); }
+    
+        /* PRIORITY MARKETING ON TOP */
+        #tab-marketing .kpi-grid { order: -1; }
+        .priority-banner {
+            background: linear-gradient(135deg, #0e7a3d 0%, #0b6e5c 100%);
+            color: white;
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+        .priority-banner span { opacity: 0.9; font-weight: 400; font-size: 12px; }
+
     </style>
 </head>
 <body>
@@ -502,8 +520,8 @@
 </div>
 
 <div class="tabs">
-    <button class="tab-btn active" id="tabBtnDashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
-    <button class="tab-btn" id="tabBtnMarketing" onclick="switchTab('marketing')">📋 Laporan Marketing Harian</button>
+    <button class="tab-btn active" id="tabBtnMarketing" onclick="switchTab('marketing')">📋 Laporan Marketing Harian</button>
+    <button class="tab-btn" id="tabBtnDashboard" onclick="switchTab('dashboard')">📊 Dashboard Monitoring</button>
 </div>
 
 <style>
@@ -593,160 +611,11 @@
 .detail-footer { margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; }
 </style>
 
-<div id="tab-dashboard" class="tab-content active">
-
-<div class="search-wrap">
-    <input id="search" placeholder="🔍  Ketik nama anggota atau no rekening..." autocomplete="off">
-    <div class="autocomplete-list" id="acList"></div>
-</div>
-
-<!-- DETAIL MODAL -->
-<div class="detail-modal" id="detailModal">
-    <div class="detail-box">
-        <div class="detail-name" id="dNama">—</div>
-        <div class="detail-row"><span class="detail-label">No Rekening</span><span class="detail-val" id="dNorek">—</span></div>
-        <div class="detail-row"><span class="detail-label">Plafond</span><span class="detail-val" id="dPlafond">—</span></div>
-        <div class="detail-row"><span class="detail-label">Outstanding</span><span class="detail-val" id="dOS">—</span></div>
-        <div class="detail-row"><span class="detail-label">Call (Agu)</span><span class="detail-val" id="dCall">—</span></div>
-        <div class="detail-row"><span class="detail-label">No HP</span><span class="detail-val" id="dHP">—</span></div>
-        <div class="detail-row"><span class="detail-label">Alamat</span><span class="detail-val" id="dAlamat">—</span></div>
-        <div class="detail-row"><span class="detail-label">AO</span><span class="detail-val" id="dAO">—</span></div>
-        <div class="detail-row"><span class="detail-label">Status</span><span class="detail-val" id="dStatus">—</span></div>
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-            <div class="detail-label" style="margin-bottom:8px">📝 Keterangan Kunjungan (Buku Kunjungan)</div>
-            <div id="dKunjungan" style="font-size:12.5px;color:var(--muted)">Memuat…</div>
-        </div>
-        <div class="detail-footer">
-            <button class="btn btn-cancel" onclick="closeDetailModal()">Tutup</button>
-            <a id="dWA" href="#" target="_blank" class="btn btn-save" style="text-decoration:none">💬 WhatsApp</a>
-        </div>
-    </div>
-</div>
-
-<div class="kpi-grid">
-    <div class="kpi k-blue">
-        <div class="kpi-label">Total Anggota</div>
-        <div class="kpi-value" id="kAnggota">—</div>
-        <div class="kpi-sub">hasil filter aktif</div>
-    </div>
-    <div class="kpi k-green">
-        <div class="kpi-label">Total Outstanding</div>
-        <div class="kpi-value" id="kOutstanding">—</div>
-        <div class="kpi-sub">sum semua anggota terfilter</div>
-    </div>
-    <div class="kpi k-cyan">
-        <div class="kpi-label">Status TETAP</div>
-        <div class="kpi-value" id="kTetap">—</div>
-        <div class="kpi-sub" id="kTetapPct">—</div>
-    </div>
-    <div class="kpi k-amber kpi-clickable" id="kpiKunjunganCard" onclick="openKunjunganList()" title="Klik untuk lihat daftar nasabah yang sudah dikunjungi">
-        <div class="kpi-label">Sudah Dikunjungi</div>
-        <div class="kpi-value" id="kBerubah">—</div>
-        <div class="kpi-sub" id="kBerubahPct">—</div>
-    </div>
-    <div class="kpi k-green kpi-clickable" id="kpiSudahBayarCard" onclick="openSudahBayarList()" title="Klik untuk lihat daftar nasabah yang sudah angsuran/bayar">
-        <div class="kpi-label">💰 Sudah Angsuran</div>
-        <div class="kpi-value" id="kSudahBayar" style="color:var(--green)">—</div>
-        <div class="kpi-sub" id="kSudahBayarPct">status kunjungan: Sudah Bayar</div>
-    </div>
-    <div class="kpi k-red">
-        <div class="kpi-label">Total Plafond</div>
-        <div class="kpi-value" id="kPlafond">—</div>
-        <div class="kpi-sub">seluruh plafond disetujui</div>
-    </div>
-    <div class="kpi k-red" id="kpiPrioritasCard" style="border-color:var(--red)">
-        <div class="kpi-label">🔴 Prioritas Belum Dikunjungi</div>
-        <div class="kpi-value" id="kPrioritas" style="color:var(--red)">—</div>
-        <div class="kpi-sub">Coll tinggi (3-4) & belum ada laporan</div>
-    </div>
-</div>
-
-<div class="filterbar">
-    <select id="fAO"><option value="">Semua AO</option></select>
-    <select id="fProgres">
-        <option value="">Semua Status</option>
-        <option value="TETAP">TETAP</option>
-        <option value="BERUBAH">BERUBAH</option>
-        <option value="LUNAS">LUNAS</option>
-    </select>
-    <select id="fApr">
-        <option value="">Semua Agu</option>
-        <option value="0">Agu = 0</option>
-        <option value="1">Agu = 1</option>
-        <option value="2">Agu = 2</option>
-        <option value="3">Agu = 3</option>
-        <option value="4">Agu = 4</option>
-    </select>
-    <button class="btn btn-export" onclick="exportCSV()">⬇ Export CSV</button>
-</div>
-
-<div class="two-col">
-    <div class="panel">
-        <h3><span class="dot"></span> Outstanding per AO</h3>
-        <div style="position:relative;height:280px">
-            <canvas id="chartAO"></canvas>
-        </div>
-    </div>
-    <div class="panel">
-        <h3><span class="dot" style="background:var(--amber)"></span> 10 Outstanding Terbesar</h3>
-        <ol class="ranking-list" id="ranking"></ol>
-    </div>
-</div>
-
-<div class="table-panel">
-    <div class="table-header">
-        <h3>Data Detail Anggota</h3>
-        <span class="table-count" id="tableCount">—</span>
-    </div>
-    <div class="table-scroll">
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Nama Anggota</th>
-                    <th>No Rekening</th>
-                    <th>Plafond</th>
-                    <th>Outstanding</th>
-                    <th>Angsuran <small>(Agu·Jul·Jun·Mei·Apr)</small></th>
-                    <th>Status</th>
-                    <th>Jatuh Tempo</th>
-                    <th>AO</th>
-                    <th>Alamat</th>
-                    <th>Ket. Rekening</th>
-                    <th>Kunjungan</th>
-                    <th>WA</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-        </table>
-    </div>
-    <div class="pagination" id="pagination"></div>
-</div>
-
-<div class="upload-bar">
-    <span class="upload-label">Ganti data CSV:</span>
-    <input type="file" id="csvFile" accept=".csv">
-    <span class="upload-note">Data limpung.csv sudah ter-embed otomatis</span>
-</div>
-
-<div class="log-panel">
-    <div class="table-header">
-        <h3>System Log</h3>
-    </div>
-    <div class="log-body" id="logBody">
-        <div><span class="log-time">[00:00:00]</span><span class="log-ok">Sistem siap. Data AGUSLEND.CSV ter-embed dan dimuat otomatis (update terbaru).</span></div>
-        <div><span class="log-time">[00:00:00]</span><span class="log-ok">278 rekening diperbarui, 47 rekening baru, 59 rekening ditandai LUNAS (tidak ada di file terbaru).</span></div>
-        <div><span class="log-time">[00:00:00]</span><span class="log-ok">Kolom Call bulan Agustus terisi dari AGUSXL.XLS (Coll) untuk 325 rekening aktif.</span></div>
-        <div><span class="log-time">[00:00:00]</span><span class="log-ok">102 rekening diperbarui AO-nya sesuai LAND3105_KANTAGUS.CSV (data lain tidak berubah).</span></div>
-    </div>
-</div>
-
-</div>
-<!-- /tab-dashboard -->
-
 <!-- ================= TAB: LAPORAN MARKETING HARIAN ================= -->
-<div id="tab-marketing" class="tab-content">
+<div id="tab-marketing" class="tab-content active">
+
+<div class="priority-banner">📌 LAPORAN MARKETING HARIAN — PRIORITAS UTAMA <span>Posisi paling atas • Update realtime dari Firebase</span></div>
+
 
 <div class="panel" style="margin-bottom:20px;">
     <h3><span class="dot" style="background:var(--green)"></span> Form Laporan Kunjungan</h3>
@@ -932,6 +801,160 @@
 
 </div>
 <!-- /tab-marketing -->
+
+<div id="tab-dashboard" class="tab-content">
+
+<div class="search-wrap">
+    <input id="search" placeholder="🔍  Ketik nama anggota atau no rekening..." autocomplete="off">
+    <div class="autocomplete-list" id="acList"></div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="detail-modal" id="detailModal">
+    <div class="detail-box">
+        <div class="detail-name" id="dNama">—</div>
+        <div class="detail-row"><span class="detail-label">No Rekening</span><span class="detail-val" id="dNorek">—</span></div>
+        <div class="detail-row"><span class="detail-label">Plafond</span><span class="detail-val" id="dPlafond">—</span></div>
+        <div class="detail-row"><span class="detail-label">Outstanding</span><span class="detail-val" id="dOS">—</span></div>
+        <div class="detail-row"><span class="detail-label">Call (Agu)</span><span class="detail-val" id="dCall">—</span></div>
+        <div class="detail-row"><span class="detail-label">No HP</span><span class="detail-val" id="dHP">—</span></div>
+        <div class="detail-row"><span class="detail-label">Alamat</span><span class="detail-val" id="dAlamat">—</span></div>
+        <div class="detail-row"><span class="detail-label">AO</span><span class="detail-val" id="dAO">—</span></div>
+        <div class="detail-row"><span class="detail-label">Status</span><span class="detail-val" id="dStatus">—</span></div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="detail-label" style="margin-bottom:8px">📝 Keterangan Kunjungan (Buku Kunjungan)</div>
+            <div id="dKunjungan" style="font-size:12.5px;color:var(--muted)">Memuat…</div>
+        </div>
+        <div class="detail-footer">
+            <button class="btn btn-cancel" onclick="closeDetailModal()">Tutup</button>
+            <a id="dWA" href="#" target="_blank" class="btn btn-save" style="text-decoration:none">💬 WhatsApp</a>
+        </div>
+    </div>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi k-blue">
+        <div class="kpi-label">Total Anggota</div>
+        <div class="kpi-value" id="kAnggota">—</div>
+        <div class="kpi-sub">hasil filter aktif</div>
+    </div>
+    <div class="kpi k-green">
+        <div class="kpi-label">Total Outstanding</div>
+        <div class="kpi-value" id="kOutstanding">—</div>
+        <div class="kpi-sub">sum semua anggota terfilter</div>
+    </div>
+    <div class="kpi k-cyan">
+        <div class="kpi-label">Status TETAP</div>
+        <div class="kpi-value" id="kTetap">—</div>
+        <div class="kpi-sub" id="kTetapPct">—</div>
+    </div>
+    <div class="kpi k-amber kpi-clickable" id="kpiKunjunganCard" onclick="openKunjunganList()" title="Klik untuk lihat daftar nasabah yang sudah dikunjungi">
+        <div class="kpi-label">Sudah Dikunjungi</div>
+        <div class="kpi-value" id="kBerubah">—</div>
+        <div class="kpi-sub" id="kBerubahPct">—</div>
+    </div>
+    <div class="kpi k-green kpi-clickable" id="kpiSudahBayarCard" onclick="openSudahBayarList()" title="Klik untuk lihat daftar nasabah yang sudah angsuran/bayar">
+        <div class="kpi-label">💰 Sudah Angsuran</div>
+        <div class="kpi-value" id="kSudahBayar" style="color:var(--green)">—</div>
+        <div class="kpi-sub" id="kSudahBayarPct">status kunjungan: Sudah Bayar</div>
+    </div>
+    <div class="kpi k-red">
+        <div class="kpi-label">Total Plafond</div>
+        <div class="kpi-value" id="kPlafond">—</div>
+        <div class="kpi-sub">seluruh plafond disetujui</div>
+    </div>
+    <div class="kpi k-red" id="kpiPrioritasCard" style="border-color:var(--red)">
+        <div class="kpi-label">🔴 Prioritas Belum Dikunjungi</div>
+        <div class="kpi-value" id="kPrioritas" style="color:var(--red)">—</div>
+        <div class="kpi-sub">Coll tinggi (3-4) & belum ada laporan</div>
+    </div>
+</div>
+
+<div class="filterbar">
+    <select id="fAO"><option value="">Semua AO</option></select>
+    <select id="fProgres">
+        <option value="">Semua Status</option>
+        <option value="TETAP">TETAP</option>
+        <option value="BERUBAH">BERUBAH</option>
+        <option value="LUNAS">LUNAS</option>
+    </select>
+    <select id="fApr">
+        <option value="">Semua Agu</option>
+        <option value="0">Agu = 0</option>
+        <option value="1">Agu = 1</option>
+        <option value="2">Agu = 2</option>
+        <option value="3">Agu = 3</option>
+        <option value="4">Agu = 4</option>
+    </select>
+    <button class="btn btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+</div>
+
+<div class="two-col">
+    <div class="panel">
+        <h3><span class="dot"></span> Outstanding per AO</h3>
+        <div style="position:relative;height:280px">
+            <canvas id="chartAO"></canvas>
+        </div>
+    </div>
+    <div class="panel">
+        <h3><span class="dot" style="background:var(--amber)"></span> 10 Outstanding Terbesar</h3>
+        <ol class="ranking-list" id="ranking"></ol>
+    </div>
+</div>
+
+<div class="table-panel">
+    <div class="table-header">
+        <h3>Data Detail Anggota</h3>
+        <span class="table-count" id="tableCount">—</span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nama Anggota</th>
+                    <th>No Rekening</th>
+                    <th>Plafond</th>
+                    <th>Outstanding</th>
+                    <th>Angsuran <small>(Agu·Jul·Jun·Mei·Apr)</small></th>
+                    <th>Status</th>
+                    <th>Jatuh Tempo</th>
+                    <th>AO</th>
+                    <th>Alamat</th>
+                    <th>Ket. Rekening</th>
+                    <th>Kunjungan</th>
+                    <th>WA</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<div class="upload-bar">
+    <span class="upload-label">Ganti data CSV:</span>
+    <input type="file" id="csvFile" accept=".csv">
+    <span class="upload-note">Data limpung.csv sudah ter-embed otomatis</span>
+</div>
+
+<div class="log-panel">
+    <div class="table-header">
+        <h3>System Log</h3>
+    </div>
+    <div class="log-body" id="logBody">
+        <div><span class="log-time">[00:00:00]</span><span class="log-ok">Sistem siap. Data AGUSLEND.CSV ter-embed dan dimuat otomatis (update terbaru).</span></div>
+        <div><span class="log-time">[00:00:00]</span><span class="log-ok">278 rekening diperbarui, 47 rekening baru, 59 rekening ditandai LUNAS (tidak ada di file terbaru).</span></div>
+        <div><span class="log-time">[00:00:00]</span><span class="log-ok">Kolom Call bulan Agustus terisi dari AGUSXL.XLS (Coll) untuk 325 rekening aktif.</span></div>
+        <div><span class="log-time">[00:00:00]</span><span class="log-ok">102 rekening diperbarui AO-nya sesuai LAND3105_KANTAGUS.CSV (data lain tidak berubah).</span></div>
+    </div>
+</div>
+
+</div>
+<!-- /tab-dashboard -->
+
+
 
 <!-- MODAL EDIT -->
 <div class="modal" id="editModal">
