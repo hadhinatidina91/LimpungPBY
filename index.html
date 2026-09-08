@@ -1976,7 +1976,11 @@ aoDb.on('value', snapshot => {
 })();
 
 function loadMarketingAO() {
-    const aoSet = new Set(dataAll.map(x => x._ao));
+    const aoSet = new Set(dataAll.map(x => x._ao).filter(Boolean));
+    // Sertakan juga AO dari laporan yang sudah ada, supaya AO tidak
+    // hilang dari pilihan saat nasabahnya sedang tidak ada di dataAll
+    // (mis. sudah LUNAS/terhapus), sama seperti fix di editLaporan().
+    (marketingReports || []).forEach(r => { if (r.ao) aoSet.add(r.ao); });
     ['mAO', 'mFilterAO'].forEach(id => {
         const sel = document.getElementById(id);
         if (!sel) return;
