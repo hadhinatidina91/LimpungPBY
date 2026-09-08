@@ -1079,6 +1079,10 @@ let dataAll = [];
 let filtered = [];
 let currentPage = 1;
 let chartAO = null;
+let marketingReports = [];      // gabungan: laporan native + kunjungan dari Buku Kunjungan
+let nativeMarketingReports = []; // laporan asli dari Firebase "laporanMarketing"
+let bkVisitReports = [];         // hasil konversi kunjungan dari Buku Kunjungan Nasabah
+let bkVisitsByName = {};         // cache per-nama untuk openDetailModal
 
 function addLog(msg, type='') {
     const el = document.getElementById('logBody');
@@ -1131,6 +1135,7 @@ function processData(rows, label) {
     addLog(`Data dimuat: <strong>${label}</strong> — ${dataAll.length} baris.`, 'log-ok');
     document.getElementById('dataBadge').textContent = dataAll.length + ' records';
     loadAO();
+    if (typeof loadMarketingAO === 'function') loadMarketingAO();
     refresh();
 }
 
@@ -1530,10 +1535,6 @@ async function fetchKunjunganByNama(nama) {
     return bkVisitsByName[normNama(nama)] || [];
 }
 
-let marketingReports = [];      // gabungan: laporan native + kunjungan dari Buku Kunjungan
-let nativeMarketingReports = []; // laporan asli dari Firebase "laporanMarketing"
-let bkVisitReports = [];         // hasil konversi kunjungan dari Buku Kunjungan Nasabah
-let bkVisitsByName = {};         // cache per-nama untuk openDetailModal
 let mLokasiCoord = null;
 let adminUnlocked = false;
 const ADMIN_CODE = '9999';
@@ -1987,7 +1988,7 @@ function loadMarketingAO() {
         const cur = sel.value;
         sel.innerHTML = (id === 'mAO' ? '<option value="">Pilih AO</option>' : '<option value="">Semua AO</option>');
         [...aoSet].sort().forEach(a => { sel.innerHTML += `<option value="${a}">${a}</option>`; });
-        if (cur) sel.value = cur;
+        if (cur) ensureAOOption(sel, cur);
     });
 }
 
@@ -2015,10 +2016,27 @@ document.addEventListener('click', function (e) {
         document.getElementById('mAcList').classList.remove('show');
     }
 });
+// Pastikan sebuah nilai AO tersedia sebagai <option> pada select sebelum
+// di-set sebagai value. Tanpa ini, kalau AO belum ada di daftar opsi
+// (mis. dropdown belum sempat refresh setelah data nasabah diperbarui),
+// browser akan diam-diam mengosongkan pilihan AO — inilah penyebab
+// "Nama AO hilang" saat memilih debitur dari autocomplete.
+function ensureAOOption(selectEl, ao) {
+    if (!selectEl || !ao) return;
+    const sudahAda = [...selectEl.options].some(o => o.value === ao);
+    if (!sudahAda) {
+        const opt = document.createElement('option');
+        opt.value = ao;
+        opt.textContent = ao;
+        selectEl.appendChild(opt);
+    }
+    selectEl.value = ao;
+}
+
 function pilihDebitur(nama, ao, norek) {
     document.getElementById('mDebitur').value = nama;
     document.getElementById('mDebiturNorek').value = norek;
-    if (ao) document.getElementById('mAO').value = ao;
+    if (ao) ensureAOOption(document.getElementById('mAO'), ao);
     document.getElementById('mAcList').classList.remove('show');
 }
 
@@ -2048,7 +2066,12 @@ function simpanLaporan() {
     const fotoFile = document.getElementById('mFoto').files[0];
 
     if (!tgl || !ao || !debitur || !status) {
-        alert('Mohon lengkapi Tanggal, Nama AO, Nama Debitur, dan Status Hasil Kunjungan.');
+        const kosong = [];
+        if (!tgl) kosong.push('Tanggal');
+        if (!ao) kosong.push('Nama AO');
+        if (!debitur) kosong.push('Nama Debitur');
+        if (!status) kosong.push('Status Hasil Kunjungan');
+        alert('Kolom berikut masih kosong menurut sistem: ' + kosong.join(', ') + '.\n\n(Jika kolom itu kelihatan sudah terisi di layar tapi tetap disebut kosong di sini, coba pilih ulang isinya langsung dari dropdown/daftar saran, lalu simpan lagi.)');
         return;
     }
     if (!norek) {
@@ -2172,7 +2195,7 @@ document.addEventListener('click', function (e) {
 function pilihDebiturEdit(nama, ao, norek) {
     document.getElementById('elDebitur').value = nama;
     document.getElementById('elDebiturNorek').value = norek;
-    document.getElementById('elAO').value = ao;
+    if (ao) ensureAOOption(document.getElementById('elAO'), ao);
     document.getElementById('elAcList').classList.remove('show');
 }
 
